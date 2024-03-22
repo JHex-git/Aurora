@@ -1,0 +1,21 @@
+[submodule "thirdparty/opengl/glm"]
+	path = thirdparty/opengl/glm
+	url = https://github.com/g-truc/glm
+[submodule "thirdparty\\opengl\\glfw"]
+	path = thirdparty\\opengl\\glfw
+	url = https://github.com/glfw/glfw
+[submodule "thirdparty\\stb"]
+	path = thirdparty\\stb
+	url = https://github.com/nothings/stb
+[submodule "thirdparty\\imgui"]
+	path = thirdparty\\imgui
+	url = https://github.com/ocornut/imgui
+[submodule "thirdparty\\spdlog"]
+	path = thirdparty\\spdlog
+	url = https://github.com/gabime/spdlog
+[submodule "thirdparty\\assimp"]
+	path = thirdparty\\assimp
+	url = https://github.com/assimp/assimp
+[submodule "thirdparty/tinyxml2"]
+	path = thirdparty/tinyxml2
+	url = https://github.com/leethomason/tinyxml2.git

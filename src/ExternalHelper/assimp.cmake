@@ -1,0 +1,5 @@
+include_directories(${CMAKE_SOURCE_DIR}/thirdparty/assimp/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/thirdparty/assimp/include)  
+set(ASSIMP_INSTALL OFF CACHE BOOL "Disable this if you want to use assimp as a submodule." FORCE)  
+set(BUILD_SHARED_LIBS ON CACHE BOOL "Build assimp as a shared library." FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "Disable this if you want to use assimp as a submodule." FORCE)

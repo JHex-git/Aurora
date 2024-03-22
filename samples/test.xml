@@ -1,0 +1,8 @@
+<Scene Name="test1">
+    <SceneObject Name="object1">
+        <MeshRendererComponent>
+            <Mesh Path="assets/models/backpack/backpack.obj" />
+            <Material Type="Default"/>
+        </MeshRendererComponent>
+    </SceneObject>
+</Scene>

@@ -1,0 +1,42 @@
+#pragma once
+// std include
+#include <string>
+// thirdparty include
+#include "thirdparty/opengl/glm/glm/glm.hpp"
+#include "thirdparty/assimp/include/assimp/scene.h"
+// Aurora include
+#include "Runtime/Scene/TextureInfo.h"
+#include "Runtime/Scene/Component.h"
+#include "Runtime/Scene/Submesh.h"
+
+namespace Aurora
+{
+class Texture;
+
+class Mesh : public Component
+{
+    friend class MeshRenderPass;
+public:
+    Mesh() = default;
+    ~Mesh() = default;
+
+    bool Load(const std::string& file_path);
+
+    void Serialize(tinyxml2::XMLElement* node) override;
+    void Deserialize(const tinyxml2::XMLElement *node) override;
+
+    void Update() override;
+
+private:
+    void ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
+    SubMesh ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform) const;
+    std::vector<TextureInfo> LoadMaterialTextures(aiMaterial* material, aiTextureType type, const std::string& base_path) const;
+    std::string ConvertaiTextureTypeToString(aiTextureType type) const;
+
+    
+private:
+    std::vector<SubMesh> m_submeshes;
+    std::string m_path;
+    
+};
+} // namespace Aurora
