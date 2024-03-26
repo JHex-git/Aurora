@@ -44,6 +44,7 @@ void MeshPhongPass::Render()
 {
     if (m_shader_program != nullptr)
     {
+        glEnable(GL_DEPTH_TEST);
         m_shader_program->Bind();
         for (auto& material : m_mesh_render_materials)
         {
