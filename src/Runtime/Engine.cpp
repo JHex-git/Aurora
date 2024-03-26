@@ -30,6 +30,14 @@ bool Engine::Init()
     }
     spdlog::info("Window System Initialized");
 
+    if (!RenderSystem::GetInstance().Init(m_window->GetWindow()))
+    {
+        spdlog::error("Failed to initialize Editor UI");
+        return false;
+    }
+    spdlog::info("Editor UI Initialized");
+
+
     m_scene_manager = std::make_unique<SceneManager>();
     m_scene_manager->LoadScene(FileSystem::GetFullPath("samples\\test.xml"));
     LightManager::GetInstance().AddLight(Light{glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f)});
@@ -46,7 +54,13 @@ bool Engine::Tick()
 void Engine::RenderTick()
 {
     m_window->Clear();
+    RenderSystem::GetInstance().Render();
     m_scene_manager->Update();
     m_window->SwapBuffers();
+}
+
+void Engine::Run()
+{
+    while (Tick());
 }
 } // namespace Aurora

@@ -15,9 +15,10 @@ public:
     Component() = default;
     ~Component() = default;
 
+    virtual bool Init() { return true; }
+    virtual void Update() { }
+
     virtual void Serialize(tinyxml2::XMLElement *node) override = 0;
     virtual void Deserialize(const tinyxml2::XMLElement *node) override = 0;
-
-    virtual void Update() = 0;
 };
 } // namespace Aurora

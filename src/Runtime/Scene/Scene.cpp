@@ -6,7 +6,7 @@
 // Aurora include
 #include "Runtime/Scene/Scene.h"
 #include "Runtime/Scene/Mesh.h"
-#include "Core/Render/Pass/MeshRenderPass.h"
+#include "Core/Render/Material/MeshRenderMaterial.h"
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/MeshRenderer.h"
 

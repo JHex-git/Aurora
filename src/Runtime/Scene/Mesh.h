@@ -15,7 +15,8 @@ class Texture;
 
 class Mesh : public Component
 {
-    friend class MeshRenderPass;
+    friend class MeshRenderMaterial;
+    friend class MeshPhongPass;
 public:
     Mesh() = default;
     ~Mesh() = default;

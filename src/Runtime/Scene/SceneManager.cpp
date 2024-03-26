@@ -6,7 +6,7 @@
 // Aurora include
 #include "Runtime/Scene/SceneManager.h"
 #include "Runtime/Scene/Mesh.h"
-#include "Core/Render/Pass/MeshRenderPass.h"
+#include "Core/Render/Material/MeshRenderMaterial.h"
 #include "Utility/FileSystem.h"
 
 namespace Aurora

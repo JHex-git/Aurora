@@ -80,6 +80,7 @@ bool WindowSystem::Init(unsigned int width, unsigned int height, std::string tit
         static double lastX = xpos;
         static double lastY = ypos;
         static bool first_mouse;
+
         if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_NORMAL)
         {
             lastX = xpos;
@@ -119,9 +120,6 @@ bool WindowSystem::Init(unsigned int width, unsigned int height, std::string tit
             glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
         }
     });
-
-    glEnable(GL_DEPTH_TEST);
-
     return true;
 }
 

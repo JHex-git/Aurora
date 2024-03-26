@@ -29,6 +29,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 include(${CMAKE_SOURCE_DIR}/src/ExternalHelper/spdlog.cmake)
 include(${CMAKE_SOURCE_DIR}/src/ExternalHelper/assimp.cmake)
 include(${CMAKE_SOURCE_DIR}/src/ExternalHelper/glad.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/imgui.cmake)
 add_subdirectory(thirdparty)
 
 add_definitions(-DPROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")

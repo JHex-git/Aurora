@@ -1,6 +1,7 @@
 file(GLOB SRCS *.cpp)
 set(TARGET Editor_lib)
 add_library(${TARGET} OBJECT ${SRCS})
+target_link_libraries(${TARGET} PUBLIC imgui glfw glad)
 if (MINGW)
     target_link_libraries(${TARGET} PUBLIC Runtime_lib)
 elseif(MSVC)

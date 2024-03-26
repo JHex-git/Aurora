@@ -4,7 +4,7 @@
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
 #include "Runtime/Scene/MeshRenderer.h"
-#include "Core/Render/Pass/MeshRenderPass.h"
+#include "Core/Render/Material/MeshRenderMaterial.h"
 
 namespace Aurora
 {
@@ -49,7 +49,7 @@ void MeshRenderer::Deserialize(const tinyxml2::XMLElement *node)
                     spdlog::error("MeshRendererComponent must have a mesh before material.");
                     return;
                 }
-                m_material = std::make_unique<MeshRenderPass>(m_mesh);
+                m_material = std::make_unique<MeshRenderMaterial>(m_mesh);
                 m_material->Deserialize(p_child);
             }
             else spdlog::error("Unknown material type {} in MeshRendererComponent.", type);
@@ -64,10 +64,6 @@ void MeshRenderer::Deserialize(const tinyxml2::XMLElement *node)
 
 void MeshRenderer::Update()
 {
-    if (m_material)
-    {
-        m_material->Render();
-    }
 }
 
 void MeshRenderer::LoadMesh(const std::string& path)
@@ -75,7 +71,7 @@ void MeshRenderer::LoadMesh(const std::string& path)
     m_mesh = std::make_shared<Mesh>();
     m_mesh->Load(path);
 
-    m_material = std::make_unique<MeshRenderPass>(m_mesh);
+    m_material = std::make_unique<MeshRenderMaterial>(m_mesh);
     m_material->Init();
 }
 } // namespace Aurora

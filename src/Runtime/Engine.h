@@ -5,6 +5,7 @@
 
 // Aurora include
 #include "Core/Render/WindowSystem.h"
+#include "Core/Render/RenderSystem.h"
 #include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
@@ -20,6 +21,8 @@ public:
     bool Tick();
 
     void RenderTick();
+
+    void Run();
 
 private:
     std::unique_ptr<WindowSystem> m_window;

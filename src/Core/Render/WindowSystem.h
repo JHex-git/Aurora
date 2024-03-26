@@ -21,6 +21,8 @@ public:
 
     bool ShouldClose() const;
 
+    GLFWwindow* GetWindow() const { return m_window; }
+
 private:
     unsigned int m_width;
     unsigned int m_height;

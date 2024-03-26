@@ -5,7 +5,7 @@
 
 // Aurora include
 #include "Runtime/Scene/Mesh.h"
-#include "Core/Render/Pass/RenderPass.h"
+#include "Core/Render/Material/RenderMaterial.h"
 
 namespace Aurora
 {
@@ -25,6 +25,6 @@ public:
 
 private:
     std::shared_ptr<Mesh> m_mesh;
-    std::unique_ptr<RenderPass> m_material;
+    std::unique_ptr<RenderMaterial> m_material;
 };
 } // namespace Aurora

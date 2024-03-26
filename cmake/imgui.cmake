@@ -1,0 +1,7 @@
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/thirdparty/imgui)
+file(GLOB IMGUI_SRCS ${IMGUI_DIR}/*.cpp)
+list(REMOVE_ITEM IMGUI_SRCS "${IMGUI_DIR}/imgui_demo.cpp")
+list(APPEND IMGUI_SRCS ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp)
+list(APPEND IMGUI_SRCS ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
+add_library(imgui STATIC ${IMGUI_SRCS})
+target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends thirdparty/opengl/glfw/include)

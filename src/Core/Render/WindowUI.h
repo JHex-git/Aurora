@@ -1,21 +1,19 @@
 #pragma once
 // std include
-
+#include <memory>
 // thirdparty include
 
 // Aurora include
+
 
 class GLFWwindow;
 namespace Aurora
 {
 
-class RenderPass
+class WindowUI
 {
 public:
-    RenderPass() = default;
-    ~RenderPass() = default;
-
     virtual bool Init(GLFWwindow* window) = 0;
-    virtual void Render() = 0;
+    virtual void Layout() = 0;
 };
 } // namespace Aurora
