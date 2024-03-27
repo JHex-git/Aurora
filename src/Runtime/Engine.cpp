@@ -4,10 +4,10 @@
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
 #include "Runtime/Engine.h"
-#include "core/render/WindowSystem.h"
+#include "Core/render/WindowSystem.h"
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/LightManager.h"
-
+#include "Core/Render/RenderSystem.h"
 
 namespace Aurora
 {
@@ -22,15 +22,14 @@ Engine::~Engine()
 
 bool Engine::Init()
 {
-    m_window = std::make_unique<WindowSystem>();
-    if (!m_window->Init(1920, 1080, "Aurora"))
+    if (!WindowSystem::GetInstance().Init(1920, 1080, "Aurora"))
     {
         spdlog::error("Failed to initialize WindowSystem");
         return false;
     }
     spdlog::info("Window System Initialized");
 
-    if (!RenderSystem::GetInstance().Init(m_window->GetWindow()))
+    if (!RenderSystem::GetInstance().Init())
     {
         spdlog::error("Failed to initialize Editor UI");
         return false;
@@ -46,17 +45,17 @@ bool Engine::Init()
 
 bool Engine::Tick()
 {
-    m_window->PollEvents();
+    WindowSystem::GetInstance().PollEvents();
     RenderTick();
-    return !m_window->ShouldClose();
+    return !WindowSystem::GetInstance().ShouldClose();
 }
 
 void Engine::RenderTick()
 {
-    m_window->Clear();
+    WindowSystem::GetInstance().Clear();
     RenderSystem::GetInstance().Render();
     m_scene_manager->Update();
-    m_window->SwapBuffers();
+    WindowSystem::GetInstance().SwapBuffers();
 }
 
 void Engine::Run()

@@ -15,13 +15,12 @@ public:
     RenderPipeline() = default;
     ~RenderPipeline() = default;
 
-    bool Init(GLFWwindow* window);
+    bool Init();
     void Render();
 
     void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material);
 
 private:
     std::unique_ptr<MeshPhongPass> m_mesh_phong_pass;
-    GLFWwindow* m_window = nullptr;
 };
 } // namespace Aurora

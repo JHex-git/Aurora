@@ -15,7 +15,7 @@ public:
     EditorUI() = default;
     ~EditorUI() = default;
 
-    bool Init(GLFWwindow* window) override final;
+    bool Init() override final;
     void Layout() override final;
 
 private:

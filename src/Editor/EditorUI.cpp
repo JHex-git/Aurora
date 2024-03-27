@@ -14,7 +14,7 @@
 
 namespace Aurora
 {
-bool EditorUI::Init(GLFWwindow* window)
+bool EditorUI::Init()
 {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;

@@ -16,7 +16,7 @@ public:
     MeshPhongPass() = default;
     ~MeshPhongPass() = default;
 
-    bool Init(GLFWwindow* window) override;
+    bool Init() override;
     void Render() override;
 
     void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material) { m_mesh_render_materials.push_back(mesh_render_material); }

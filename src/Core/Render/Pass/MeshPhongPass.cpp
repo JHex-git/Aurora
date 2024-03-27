@@ -14,9 +14,8 @@
 namespace Aurora
 {
 
-bool MeshPhongPass::Init(GLFWwindow* window)
+bool MeshPhongPass::Init()
 {
-    
     std::vector<Shader> shaders;
     shaders.emplace_back(ShaderType::VertexShader);
     if (!shaders[0].Load(FileSystem::GetFullPath("assets/shaders/bypass.vert")))

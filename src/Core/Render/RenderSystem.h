@@ -21,9 +21,15 @@ public:
         return instance;
     }
 
+    RenderSystem(const RenderSystem&) = delete;
+    RenderSystem& operator=(const RenderSystem&) = delete;
+
+    RenderSystem(RenderSystem&&) = delete;
+    RenderSystem& operator=(RenderSystem&&) = delete;
+
     ~RenderSystem() = default;
 
-    bool Init(GLFWwindow* window);
+    bool Init();
     void Render();
 
     void UpdateViewInfo(ViewInfo&& view_info) { m_view_window->UpdateViewInfo(std::move(view_info)); }
@@ -35,6 +41,5 @@ private:
 private:
     std::unique_ptr<EditorUIPass> m_editor_ui_pass;
     std::unique_ptr<ViewWindow> m_view_window;
-    GLFWwindow* m_window = nullptr;
 };
 } // namespace Aurora

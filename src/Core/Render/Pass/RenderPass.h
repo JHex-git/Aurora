@@ -15,7 +15,7 @@ public:
     RenderPass() = default;
     ~RenderPass() = default;
 
-    virtual bool Init(GLFWwindow* window) = 0;
+    virtual bool Init() = 0;
     virtual void Render() = 0;
 };
 } // namespace Aurora

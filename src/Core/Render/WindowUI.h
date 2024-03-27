@@ -13,7 +13,7 @@ namespace Aurora
 class WindowUI
 {
 public:
-    virtual bool Init(GLFWwindow* window) = 0;
+    virtual bool Init() = 0;
     virtual void Layout() = 0;
 };
 } // namespace Aurora

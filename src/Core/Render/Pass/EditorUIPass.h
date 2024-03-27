@@ -17,11 +17,10 @@ public:
     EditorUIPass() = default;
     ~EditorUIPass();
 
-    bool Init(GLFWwindow* window) override final;
+    bool Init() override final;
     void Render() override final;
 
 private:
     std::vector<std::shared_ptr<WindowUI>> m_window_UIs;
-    GLFWwindow* m_window = nullptr;
 };
 } // namespace Aurora

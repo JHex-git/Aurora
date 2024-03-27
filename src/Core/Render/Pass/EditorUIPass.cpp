@@ -10,14 +10,14 @@
 // Aurora include
 #include "Core/Render/Pass/EditorUIPass.h"
 #include "Editor/EditorUI.h"
+#include "Core/Render/WindowSystem.h"
 
 namespace Aurora
 {
 
-bool EditorUIPass::Init(GLFWwindow* window)
+bool EditorUIPass::Init()
 {
-    m_window = window;
-    
+    GLFWwindow* window = WindowSystem::GetInstance().GetWindow();
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -35,7 +35,7 @@ bool EditorUIPass::Init(GLFWwindow* window)
     m_window_UIs.push_back(std::make_shared<EditorUI>());
     for (auto& window_UI : m_window_UIs)
     {
-        if (!window_UI->Init(m_window)) return false;
+        if (!window_UI->Init()) return false;
     }
 
     return true;
@@ -43,10 +43,6 @@ bool EditorUIPass::Init(GLFWwindow* window)
 
 void EditorUIPass::Render()
 {
-    int width, height;
-    glfwGetFramebufferSize(m_window, &width, &height);
-    glViewport(0, 0, width, height);
-    
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -59,9 +55,8 @@ void EditorUIPass::Render()
     
     // Rendering
     ImGui::Render();
-    int display_w, display_h;
-    glfwGetFramebufferSize(m_window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
+    auto size = WindowSystem::GetInstance().GetWindowSize();
+    glViewport(0, 0, size[0], size[1]);
     glClear(GL_DEPTH_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

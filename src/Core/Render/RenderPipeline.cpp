@@ -8,11 +8,10 @@
 namespace Aurora
 {
 
-bool RenderPipeline::Init(GLFWwindow* window)
+bool RenderPipeline::Init()
 {
-    m_window = window;
     m_mesh_phong_pass = std::make_unique<MeshPhongPass>();
-    return m_mesh_phong_pass->Init(m_window);
+    return m_mesh_phong_pass->Init();
 }
 
 void RenderPipeline::Render()

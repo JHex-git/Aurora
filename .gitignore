@@ -5,3 +5,4 @@ resources/
 template.h
 template.cpp
 gen_class.sh
+imgui.ini
