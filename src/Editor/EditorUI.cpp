@@ -11,6 +11,7 @@
 // Aurora include
 #include "Editor/EditorUI.h"
 #include "Core/Render/RenderSystem.h"
+#include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
 {
@@ -101,6 +102,31 @@ void EditorUI::ShowMainMenu()
     ImGui::End();
 }
 
+void EditorUI::ShowSceneObjectRecursive(const std::shared_ptr<SceneObject>& scene_object)
+{
+    auto children = scene_object->GetChildren();
+    ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_OpenOnArrow;
+    if (children.empty()) tree_node_flags |= ImGuiTreeNodeFlags_Leaf;
+    if (scene_object == SceneManager::GetInstance().GetScene()->GetSelectedSceneObject())
+        tree_node_flags |= ImGuiTreeNodeFlags_Selected;
+
+    bool is_open = ImGui::TreeNodeEx(scene_object->GetName().c_str(), tree_node_flags);
+    if (ImGui::IsItemClicked())
+    {
+        SceneManager::GetInstance().GetScene()->SetSelectedSceneObject(scene_object);
+    }
+
+    if (is_open)
+    {
+        for (auto& child : children)
+        {
+            ShowSceneObjectRecursive(child);
+        }
+        ImGui::TreePop();
+    }
+
+}
+
 void EditorUI::ShowScenePanel()
 {
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoMove;
@@ -109,7 +135,15 @@ void EditorUI::ShowScenePanel()
         ImGui::End();
         return;
     }
-    ImGui::Text("Scene Panel");
+    auto scene = SceneManager::GetInstance().GetScene();
+    if (scene)
+    {
+        auto scene_objects = scene->GetSceneObjects();
+        for (auto& scene_object : scene_objects)
+        {
+            ShowSceneObjectRecursive(scene_object);
+        }
+    }
     ImGui::End();
 }
 
@@ -121,7 +155,35 @@ void EditorUI::ShowInspectorPanel()
         ImGui::End();
         return;
     }
-    ImGui::Text("Inspector Panel");
+    auto selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
+    if (selected_scene_object)
+    {
+        ImGui::Text(selected_scene_object->GetName().c_str());
+        auto components = selected_scene_object->GetComponents();
+        for (auto& component : components)
+        {
+            std::string component_name = component->GetClassName();
+
+            if (ImGui::CollapsingHeader(component_name.c_str()))
+            {
+                const auto& fields = ReflectionFactory::GetInstance().GetFields(component_name);
+                for (auto& field : fields)
+                {
+                    ImGui::Text(field.first.c_str());
+                    ImGui::SameLine();
+                    std::string field_type = field.second.GetFieldType();
+
+                    // TODO: add supported field
+                    if (field_type == "std::string")
+                        ImGui::Text(component->GetField<std::string>(field.first.c_str()).c_str());
+                    else
+                    {
+                        spdlog::error("Unsupported field type {}", field_type.c_str());
+                    }
+                }
+            }
+        }
+    }
     ImGui::End();
 }
 
@@ -141,7 +203,6 @@ void EditorUI::ShowViewPanel()
     view_size.y = ImGui::GetContentRegionAvail().y;
     RenderSystem::GetInstance().UpdateViewInfo(ViewInfo{ {static_cast<int>(view_size.x), static_cast<int>(view_size.y)}, 
                                            {static_cast<int>(view_pos.x), static_cast<int>(view_pos.y)} });
-    ImGui::Text("View Panel");
     ImGui::End();
 }
 

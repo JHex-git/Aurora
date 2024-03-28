@@ -4,5 +4,7 @@
             <Mesh Path="assets/models/backpack/backpack.obj" />
             <Material Type="Default"/>
         </MeshRendererComponent>
+        <SceneObject Name="object2"></SceneObject>
     </SceneObject>
+    <SceneObject Name="object3"></SceneObject>
 </Scene>

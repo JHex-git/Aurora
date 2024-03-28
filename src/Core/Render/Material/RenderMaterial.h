@@ -12,7 +12,7 @@ namespace Aurora
 class RenderMaterial : public Component
 {
 public:
-    RenderMaterial() = default;
+    RenderMaterial() : Component() { m_class_name = "RenderMaterial"; }
     ~RenderMaterial() = default;
 
     virtual bool Init() override { return true; }

@@ -13,7 +13,7 @@ namespace Aurora
 class MeshRenderer : public Component
 {
 public:
-    MeshRenderer() = default;
+    MeshRenderer() : Component() { m_class_name = "MeshRenderer"; }
     ~MeshRenderer() = default;
 
     void Serialize(tinyxml2::XMLElement *node) override;

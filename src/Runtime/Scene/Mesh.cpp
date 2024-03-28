@@ -15,6 +15,7 @@
 
 namespace Aurora
 {
+REFLECTABLE_IMPL(Mesh, m_path, std::string)
 
 void Mesh::Serialize(tinyxml2::XMLElement* node)
 {

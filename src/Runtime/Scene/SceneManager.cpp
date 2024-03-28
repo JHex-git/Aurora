@@ -45,7 +45,7 @@ void SceneManager::LoadScene(const std::string& scene_path)
     // save current scene before load another scene
     SaveScene();
 
-    m_scene = std::make_unique<Scene>(scene_path);
+    m_scene = std::make_shared<Scene>(scene_path);
     tinyxml2::XMLDocument doc;
     doc.LoadFile(scene_path.c_str());
     auto root = doc.RootElement();

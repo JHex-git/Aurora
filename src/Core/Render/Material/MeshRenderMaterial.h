@@ -18,7 +18,7 @@ class MeshRenderMaterial : public RenderMaterial
     friend class MeshPhongPass;
     
 public:
-    MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : m_mesh(mesh) { }
+    MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : RenderMaterial(), m_mesh(mesh) { m_class_name = "MeshRenderMaterial"; }
     ~MeshRenderMaterial() = default;
 
     bool Init() override;

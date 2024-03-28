@@ -5,11 +5,12 @@
 
 // Aurora include
 #include "Utility/Serializable.h"
+#include "Utility/Reflection/Reflectable.h"
 
 namespace Aurora
 {
 
-class Component : public Serializable
+class Component : public Serializable, public Reflectable
 {
 public:
     Component() = default;
@@ -21,4 +22,5 @@ public:
     virtual void Serialize(tinyxml2::XMLElement *node) override = 0;
     virtual void Deserialize(const tinyxml2::XMLElement *node) override = 0;
 };
+
 } // namespace Aurora

@@ -8,6 +8,7 @@
 #include "Runtime/Scene/TextureInfo.h"
 #include "Runtime/Scene/Component.h"
 #include "Runtime/Scene/Submesh.h"
+#include "Utility/Reflection/ReflectionRegister.h"
 
 namespace Aurora
 {
@@ -18,7 +19,7 @@ class Mesh : public Component
     friend class MeshRenderMaterial;
     friend class MeshPhongPass;
 public:
-    Mesh() = default;
+    Mesh() : Component() { m_class_name = "Mesh"; }
     ~Mesh() = default;
 
     bool Load(const std::string& file_path);
@@ -37,7 +38,10 @@ private:
     
 private:
     std::vector<SubMesh> m_submeshes;
+
+    REFLECTABLE_DECLARE(Mesh, m_path)
     std::string m_path;
     
 };
+
 } // namespace Aurora

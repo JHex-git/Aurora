@@ -8,6 +8,7 @@
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/LightManager.h"
 #include "Core/Render/RenderSystem.h"
+#include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
 {
@@ -36,9 +37,7 @@ bool Engine::Init()
     }
     spdlog::info("Editor UI Initialized");
 
-
-    m_scene_manager = std::make_unique<SceneManager>();
-    m_scene_manager->LoadScene(FileSystem::GetFullPath("samples\\test.xml"));
+    SceneManager::GetInstance().LoadScene(FileSystem::GetFullPath("samples\\test.xml"));
     LightManager::GetInstance().AddLight(Light{glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f)});
     return true;
 }
@@ -54,7 +53,7 @@ void Engine::RenderTick()
 {
     WindowSystem::GetInstance().Clear();
     RenderSystem::GetInstance().Render();
-    m_scene_manager->Update();
+    SceneManager::GetInstance().Update();
     WindowSystem::GetInstance().SwapBuffers();
 }
 

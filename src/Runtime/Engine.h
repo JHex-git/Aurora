@@ -4,7 +4,6 @@
 // thirdparty include
 
 // Aurora include
-#include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
 {
@@ -21,8 +20,5 @@ public:
     void RenderTick();
 
     void Run();
-
-private:
-    std::unique_ptr<SceneManager> m_scene_manager;
 };
 } // namespace Aurora
