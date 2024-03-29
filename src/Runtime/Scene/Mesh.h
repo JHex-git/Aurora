@@ -35,7 +35,6 @@ private:
     std::vector<TextureInfo> LoadMaterialTextures(aiMaterial* material, aiTextureType type, const std::string& base_path) const;
     std::string ConvertaiTextureTypeToString(aiTextureType type) const;
 
-    
 private:
     std::vector<SubMesh> m_submeshes;
 

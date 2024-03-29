@@ -1,10 +1,27 @@
 <Scene Name="test1">
     <SceneObject Name="object1">
+        <TransformComponent>
+            <Position X="0" Y="0" Z="0"/>
+            <Rotation X="0" Y="0" Z="0"/>
+            <Scale X="1" Y="1" Z="1"/>
+        </TransformComponent>
         <MeshRendererComponent>
             <Mesh Path="assets/models/backpack/backpack.obj" />
             <Material Type="Default"/>
         </MeshRendererComponent>
-        <SceneObject Name="object2"></SceneObject>
+        <SceneObject Name="object2">
+            <TransformComponent>
+                <Position X="0" Y="0" Z="0"/>
+                <Rotation X="0" Y="0" Z="0"/>
+                <Scale X="1" Y="1" Z="1"/>
+            </TransformComponent>
+        </SceneObject>
     </SceneObject>
-    <SceneObject Name="object3"></SceneObject>
+    <SceneObject Name="object3">
+        <TransformComponent>
+            <Position X="0" Y="0" Z="0"/>
+            <Rotation X="0" Y="0" Z="0"/>
+            <Scale X="1" Y="1" Z="1"/>
+        </TransformComponent>
+    </SceneObject>
 </Scene>

@@ -28,6 +28,9 @@ private:
 
     void ShowSceneObjectRecursive(const std::shared_ptr<SceneObject>& scene_object);
 
+    void DrawVec3Control(const std::string& field_name, std::shared_ptr<Component> component);
+    void DrawQuaternionControl(const std::string& field_name, std::shared_ptr<Component> component);
+
     bool m_show_main_menu = true;
     bool m_show_scene_panel = true;
     bool m_show_inspector_panel = true;

@@ -166,20 +166,35 @@ void EditorUI::ShowInspectorPanel()
 
             if (ImGui::CollapsingHeader(component_name.c_str()))
             {
-                const auto& fields = ReflectionFactory::GetInstance().GetFields(component_name);
-                for (auto& field : fields)
+                std::string table_name = "##Table" + component_name;
+                if (ImGui::BeginTable(table_name.c_str(), 2))
                 {
-                    ImGui::Text(field.first.c_str());
-                    ImGui::SameLine();
-                    std::string field_type = field.second.GetFieldType();
-
-                    // TODO: add supported field
-                    if (field_type == "std::string")
-                        ImGui::Text(component->GetField<std::string>(field.first.c_str()).c_str());
-                    else
+                    const auto& fields = ReflectionFactory::GetInstance().GetFields(component_name);
+                    for (auto& field : fields)
                     {
-                        spdlog::error("Unsupported field type {}", field_type.c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::Text(field.first.c_str());
+                        ImGui::TableNextColumn();
+                        std::string field_type = field.second.GetFieldType();
+
+                        // TODO: add supported field
+                        if (field_type == "std::string")
+                            ImGui::Text(component->GetField<std::string>(field.first.c_str()).c_str());
+                        else if (field_type == "glm::vec3")
+                        {
+                            DrawVec3Control(field.first, component);
+                        }
+                        else if (field_type == "glm::quat")
+                        {
+                            DrawQuaternionControl(field.first, component);
+                        }
+                        else
+                        {
+                            spdlog::error("Unsupported field type {}", field_type.c_str());
+                        }
                     }
+
+                    ImGui::EndTable();
                 }
             }
         }
@@ -218,4 +233,57 @@ void EditorUI::ShowFileContentPanel()
     ImGui::End();
 }
 
+void EditorUI::DrawVec3Control(const std::string& field_name, std::shared_ptr<Component> component)
+{
+    ImGui::PushID(field_name.c_str());
+    auto vec3 = component->GetField<glm::vec3>(field_name.c_str());
+    ImGuiTableFlags table_flags = ImGuiTableFlags_None;
+    ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
+    if (ImGui::BeginTable("##vec3", 3, table_flags))
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text("x");
+        ImGui::SameLine();
+        ImGui::DragFloat("##x", &vec3.x, 1.f, FLT_MIN, FLT_MAX, "%.2f", drag_float_flags);
+        ImGui::TableNextColumn();
+        ImGui::Text("y");
+        ImGui::SameLine();
+        ImGui::DragFloat("##y", &vec3.y, 1.f, FLT_MIN, FLT_MAX, "%.2f", drag_float_flags);
+        ImGui::TableNextColumn();
+        ImGui::Text("z");
+        ImGui::SameLine();
+        ImGui::DragFloat("##z", &vec3.z, 1.f, FLT_MIN, FLT_MAX, "%.2f", drag_float_flags);
+        ImGui::EndTable();
+    }
+    component->SetField(field_name.c_str(), vec3);
+    ImGui::PopID();
+}
+
+void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_ptr<Component> component)
+{
+    ImGui::PushID(field_name.c_str());
+    auto quat = component->GetField<glm::quat>(field_name.c_str());
+    auto angle = glm::eulerAngles(quat);// radius
+    angle = glm::degrees(angle); // degree
+    ImGuiTableFlags table_flags = ImGuiTableFlags_None;
+    ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
+    if (ImGui::BeginTable("##quat", 3, table_flags))
+    {
+        ImGui::TableNextColumn();
+        ImGui::Text("x");
+        ImGui::SameLine();
+        ImGui::DragFloat("##x", &angle.x, 0.1f, -180, 180, "%.2f", drag_float_flags);
+        ImGui::TableNextColumn();
+        ImGui::Text("y");
+        ImGui::SameLine();
+        ImGui::DragFloat("##y", &angle.y, 0.1f, -90, 90, "%.2f", drag_float_flags);
+        ImGui::TableNextColumn();
+        ImGui::Text("z");
+        ImGui::SameLine();
+        ImGui::DragFloat("##z", &angle.z, 0.1f, -180, 180, "%.2f", drag_float_flags);
+        ImGui::EndTable();
+    }
+    component->SetField(field_name.c_str(), glm::quat(glm::radians(angle)));
+    ImGui::PopID();
+}
 } // namespace Aurora
