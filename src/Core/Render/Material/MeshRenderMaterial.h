@@ -13,7 +13,7 @@
 namespace Aurora
 {
 
-class MeshRenderMaterial : public RenderMaterial
+class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from_this<MeshRenderMaterial>
 {
     friend class MeshPhongPass;
     

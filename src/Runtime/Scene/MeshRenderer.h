@@ -25,6 +25,6 @@ public:
 
 private:
     std::shared_ptr<Mesh> m_mesh;
-    std::unique_ptr<RenderMaterial> m_material;
+    std::shared_ptr<RenderMaterial> m_material;
 };
 } // namespace Aurora

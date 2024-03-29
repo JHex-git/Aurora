@@ -45,7 +45,7 @@ bool MeshRenderMaterial::Init()
         m_ebos[i]->LoadData(m_mesh->m_submeshes[i].m_indices, m_mesh->m_submeshes[i].m_indices.size());
     }
 
-    RenderSystem::GetInstance().AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial>(this));
+    RenderSystem::GetInstance().AddMeshRenderMaterial(shared_from_this());
     return true;
 }
 } // namespace Aurora
