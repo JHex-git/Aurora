@@ -158,6 +158,7 @@ void EditorUI::ShowInspectorPanel()
     auto selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
     if (selected_scene_object)
     {
+        ImGui::PushID(selected_scene_object->GetName().c_str());
         ImGui::Text(selected_scene_object->GetName().c_str());
         auto components = selected_scene_object->GetComponents();
         for (auto& component : components)
@@ -198,6 +199,7 @@ void EditorUI::ShowInspectorPanel()
                 }
             }
         }
+        ImGui::PopID();
     }
     ImGui::End();
 }
