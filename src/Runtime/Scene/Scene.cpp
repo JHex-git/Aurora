@@ -48,7 +48,7 @@ void Scene::Serialize(tinyxml2::XMLElement *node)
 {
     for (auto& scene_object : m_scene_objects)
     {
-        auto child_node = node->InsertNewChildElement(nullptr);
+        auto child_node = node->InsertNewChildElement("Temp");
         scene_object->Serialize(child_node);
     }
 }
@@ -82,6 +82,7 @@ void Scene::Save()
     {
         tinyxml2::XMLDocument doc;
         auto root = doc.NewElement("Scene");
+        doc.InsertEndChild(root);
         root->SetAttribute("Name", m_scene_name.c_str());
         Serialize(root);
         doc.SaveFile(m_scene_path.c_str());

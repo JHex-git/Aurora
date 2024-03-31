@@ -19,6 +19,8 @@ public:
     virtual bool Init() { return true; }
     virtual void Update() { }
 
+    virtual void* GetThis() override { return this; }
+
     virtual void Serialize(tinyxml2::XMLElement *node) override = 0;
     virtual void Deserialize(const tinyxml2::XMLElement *node) override = 0;
 };

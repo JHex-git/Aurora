@@ -236,7 +236,8 @@ void EditorUI::ShowFileContentPanel()
 void EditorUI::DrawVec3Control(const std::string& field_name, std::shared_ptr<Component> component)
 {
     ImGui::PushID(field_name.c_str());
-    auto vec3 = component->GetField<glm::vec3>(field_name.c_str());
+    const auto old_vec3 = component->GetField<glm::vec3>(field_name.c_str());
+    glm::vec3 vec3 = old_vec3;
     ImGuiTableFlags table_flags = ImGuiTableFlags_None;
     ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
     if (ImGui::BeginTable("##vec3", 3, table_flags))
@@ -254,16 +255,21 @@ void EditorUI::DrawVec3Control(const std::string& field_name, std::shared_ptr<Co
         ImGui::SameLine();
         ImGui::DragFloat("##z", &vec3.z, 1.f, FLT_MIN, FLT_MAX, "%.2f", drag_float_flags);
         ImGui::EndTable();
+
+        if (vec3 != old_vec3)
+        {
+            component->SetField(field_name.c_str(), vec3);
+            SceneManager::GetInstance().GetScene()->SetDirty();
+        }
     }
-    component->SetField(field_name.c_str(), vec3);
     ImGui::PopID();
 }
 
 void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_ptr<Component> component)
 {
     ImGui::PushID(field_name.c_str());
-    auto quat = component->GetField<glm::quat>(field_name.c_str());
-    auto angle = glm::eulerAngles(quat);// radius
+    const auto old_quat = component->GetField<glm::quat>(field_name.c_str());
+    auto angle = glm::eulerAngles(old_quat);// radius
     angle = glm::degrees(angle); // degree
     ImGuiTableFlags table_flags = ImGuiTableFlags_None;
     ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
@@ -282,8 +288,14 @@ void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_
         ImGui::SameLine();
         ImGui::DragFloat("##z", &angle.z, 0.1f, -180, 180, "%.2f", drag_float_flags);
         ImGui::EndTable();
+
+        const auto new_quat = glm::quat(glm::radians(angle));
+        if (glm::angle(glm::inverse(old_quat) * new_quat) > 1e-5f) // 0.01 radian threshold
+        {
+            component->SetField(field_name.c_str(), new_quat);
+            SceneManager::GetInstance().GetScene()->SetDirty();
+        }
     }
-    component->SetField(field_name.c_str(), glm::quat(glm::radians(angle)));
     ImGui::PopID();
 }
 } // namespace Aurora

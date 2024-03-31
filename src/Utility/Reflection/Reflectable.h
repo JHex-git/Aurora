@@ -15,18 +15,21 @@ public:
     Reflectable() = default;
     virtual ~Reflectable() = default;
 
+    // This function should be overriden if multiple inheritance is used.
+    virtual void* GetThis() { return this; }
+
     template <typename T>
     const T& GetField(const std::string& field_name)
     {
         auto field = ReflectionFactory::GetInstance().GetField(GetClassName(), field_name);
-        return *reinterpret_cast<T*>(reinterpret_cast<uint64_t>(this) + field->GetOffset());
+        return *reinterpret_cast<T*>(reinterpret_cast<uint64_t>(GetThis()) + field->GetOffset());
     }
 
     template <typename T>
     void SetField(const std::string& field_name, const T& value)
     {
         auto field = ReflectionFactory::GetInstance().GetField(GetClassName(), field_name);
-        *reinterpret_cast<T*>(reinterpret_cast<uint64_t>(this) + field->GetOffset()) = value;
+        *reinterpret_cast<T*>(reinterpret_cast<uint64_t>(GetThis()) + field->GetOffset()) = value;
     }
 
     const std::string& GetClassName() const { return m_class_name; }

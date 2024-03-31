@@ -15,13 +15,13 @@ void MeshRenderer::Serialize(tinyxml2::XMLElement *node)
 
     if (m_mesh)
     {
-        auto mesh_node = node->InsertNewChildElement(nullptr);
+        auto mesh_node = node->InsertNewChildElement("Temp");
         m_mesh->Serialize(mesh_node);
     }
 
     if (m_material)
     {
-        auto material_node = node->InsertNewChildElement(nullptr);
+        auto material_node = node->InsertNewChildElement("Temp");
         m_material->Serialize(material_node);
     }
 }

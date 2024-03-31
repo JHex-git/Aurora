@@ -24,15 +24,16 @@ void SceneObject::Update()
 void SceneObject::Serialize(tinyxml2::XMLElement *node)
 {
     node->SetName("SceneObject");
+    node->SetAttribute("Name", m_name.c_str());
 
     for (auto& component : m_components)
     {
-        auto child_node = node->InsertNewChildElement(nullptr);
+        auto child_node = node->InsertNewChildElement("Temp");
         component->Serialize(child_node);
     }
     for (auto& child : m_children)
     {
-        auto child_node = node->InsertNewChildElement(nullptr);
+        auto child_node = node->InsertNewChildElement("Temp");
         child->Serialize(child_node);
     }
 }

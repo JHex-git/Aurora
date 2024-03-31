@@ -27,6 +27,7 @@ public:
     void LoadMesh(std::string file_path);
 
     void SetSelectedSceneObject(std::shared_ptr<SceneObject> scene_object) { m_selected_scene_object = scene_object; }
+    void SetDirty() { m_is_dirty = true; }
 
     const std::vector<std::shared_ptr<SceneObject>>& GetSceneObjects() const { return m_scene_objects; }
     const std::shared_ptr<SceneObject> GetSelectedSceneObject() const { return m_selected_scene_object.lock(); }

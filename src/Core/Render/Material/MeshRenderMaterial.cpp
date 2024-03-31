@@ -18,7 +18,7 @@ namespace Aurora
 void MeshRenderMaterial::Serialize(tinyxml2::XMLElement *node)
 {
     node->SetName("Material");
-    node->Attribute("Type", "Default");
+    node->SetAttribute("Type", "Default");
 }
 
 void MeshRenderMaterial::Deserialize(const tinyxml2::XMLElement *node)
