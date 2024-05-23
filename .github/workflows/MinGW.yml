@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: MinGW CI
 
 on:
   push:
@@ -15,9 +15,6 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'true'
-
-    - name: Build-MSVC
-      run: ./MSVC_build.bat
 
     - name: Build-MinGW
       run: ./MinGW_build.bat
