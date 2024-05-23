@@ -1,5 +1,5 @@
 set(TARGET Scene_lib)
 file(GLOB SRCS *.cpp)
 add_library(${TARGET} STATIC ${SRCS})
-target_link_libraries(${TARGET} assimp tinyxml2)
-target_link_libraries(${TARGET} Render_lib)
+target_link_libraries(${TARGET} PRIVATE assimp tinyxml2 stb)
+target_link_libraries(${TARGET} PUBLIC Render_lib)

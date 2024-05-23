@@ -1,2 +1,7 @@
 set(SRCS glad.c)
-add_library(glad SHARED ${SRCS})
+
+if(MINGW)
+    add_library(glad SHARED ${SRCS})
+elseif(MSVC)
+    add_library(glad STATIC ${SRCS})
+endif()

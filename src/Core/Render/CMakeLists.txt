@@ -1,4 +1,5 @@
 file(GLOB_RECURSE SRCS *.cpp)
 set(TARGET Render_lib)
 add_library(${TARGET} STATIC ${SRCS})
-target_link_libraries(${TARGET} PUBLIC glad glWrapper_lib glfw glWrapper_lib Scene_lib imgui)
+target_link_libraries(${TARGET} PUBLIC glWrapper_lib Scene_lib)
+target_link_libraries(${TARGET} PRIVATE glfw imgui)
