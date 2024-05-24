@@ -1,7 +1,6 @@
 #pragma once
 // std include
 #include <memory>
-#include <array>
 // thirdparty include
 
 // Aurora include
@@ -13,8 +12,8 @@ namespace Aurora
 
 struct ViewInfo
 {
-    std::array<int, 2> m_size;
-    std::array<int, 2> m_position; // left bottom corner
+    std::array<int, 2> size;
+    std::array<int, 2> position; // left bottom corner
 };
 
 class ViewWindow
@@ -34,6 +33,8 @@ private:
     void OnMouseButtonCallback(int button, int action, int mods);
     void OnScrollCallback(double xoffset, double yoffset);
     void OnKeyCallback(int key, int scancode, int action, int mods);
+
+    void RenderViewUI();
 
 private:
     std::unique_ptr<RenderPipeline> m_render_pipeline;

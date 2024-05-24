@@ -2,8 +2,6 @@
 #include <functional>
 // thirdparty include
 #include "thirdparty/opengl/glad/include/glad/glad.h"
-#include "thirdparty/imgui/imgui_internal.h"
-#include "thirdparty/opengl/glfw/include/GLFW/glfw3.h"
 // Aurora include
 #include "Core/Render/ViewWindow.h"
 #include "Runtime/Scene/Camera.h"
@@ -25,8 +23,13 @@ bool ViewWindow::Init()
 
 void ViewWindow::Render()
 {
-    glViewport(m_view_info.m_position[0], m_view_info.m_position[1], m_view_info.m_size[0], m_view_info.m_size[1]);
+    glViewport(m_view_info.position[0], m_view_info.position[1], m_view_info.size[0], m_view_info.size[1]);
     m_render_pipeline->Render();
+    RenderViewUI();
+}
+
+void ViewWindow::RenderViewUI()
+{
 }
 
 void ViewWindow::OnMousePosCallback(double xpos, double ypos)
@@ -53,8 +56,8 @@ void ViewWindow::OnMouseButtonCallback(int button, int action, int mods)
     }
 
     auto pos = WindowSystem::GetInstance().GetCursorPos();
-    if (pos[0] < m_view_info.m_position[0] || pos[0] > m_view_info.m_position[0] + m_view_info.m_size[0] ||
-        pos[1] < m_view_info.m_position[1] || pos[1] > m_view_info.m_position[1] + m_view_info.m_size[1])
+    if (pos[0] < m_view_info.position[0] || pos[0] > m_view_info.position[0] + m_view_info.size[0] ||
+        pos[1] < m_view_info.position[1] || pos[1] > m_view_info.position[1] + m_view_info.size[1])
         return;
 
     if (button == GLFW_MOUSE_BUTTON_RIGHT || button == GLFW_MOUSE_BUTTON_MIDDLE)

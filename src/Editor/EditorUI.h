@@ -20,7 +20,7 @@ public:
     void Layout() override final;
 
 private:
-    void ShowMainMenu();
+    void ShowMainPanel();
     void ShowScenePanel();
     void ShowInspectorPanel();
     void ShowViewPanel();
@@ -31,8 +31,10 @@ private:
     void DrawVec3Control(const std::string& field_name, std::shared_ptr<Component> component);
     void DrawQuaternionControl(const std::string& field_name, std::shared_ptr<Component> component);
 
-    bool m_show_main_menu = true;
+    bool m_show_main_panel = true;
     bool m_show_scene_panel = true;
     bool m_show_inspector_panel = true;
+
+    double last_frame_time = 0.0f;
 };
 } // namespace Aurora

@@ -25,14 +25,14 @@ bool EditorUI::Init()
 
 void EditorUI::Layout()
 {
-    ShowMainMenu();
+    ShowMainPanel();
     ShowScenePanel();
     ShowInspectorPanel();
     ShowViewPanel();
     ShowFileContentPanel();
 }
 
-void EditorUI::ShowMainMenu()
+void EditorUI::ShowMainPanel()
 {
     ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_DockSpace;
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove |
@@ -45,7 +45,7 @@ void EditorUI::ShowMainMenu()
     ImGui::SetNextWindowSize(viewport->WorkSize); // FIXME:
     ImGui::SetNextWindowViewport(viewport->ID);
 
-    if (!ImGui::Begin("Editor Menu", &m_show_main_menu, window_flags))
+    if (!ImGui::Begin("Editor", &m_show_main_panel, window_flags))
     {
         ImGui::End();
         return;
@@ -213,6 +213,11 @@ void EditorUI::ShowViewPanel()
         return;
     }
 
+    double current_time = static_cast<float>(glfwGetTime());
+    double delta_time = current_time - last_frame_time;
+    last_frame_time = current_time;
+    float fps = 1.0f / delta_time;
+    ImGui::Text("FPS: %.1f", fps);
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     auto view_pos = ImGui::GetWindowPos();
     auto view_size = ImGui::GetWindowSize();
