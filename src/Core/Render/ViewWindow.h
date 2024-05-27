@@ -1,6 +1,7 @@
 #pragma once
 // std include
 #include <memory>
+#include <array>
 // thirdparty include
 
 // Aurora include
