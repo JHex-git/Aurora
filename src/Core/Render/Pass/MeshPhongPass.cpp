@@ -18,15 +18,15 @@ bool MeshPhongPass::Init()
 {
     std::vector<Shader> shaders;
     shaders.emplace_back(ShaderType::VertexShader);
-    if (!shaders[0].Load(FileSystem::GetFullPath("assets/shaders/bypass.vert")))
+    if (!shaders[0].Load(FileSystem::GetFullPath("shaders/bypass.vert")))
     {
-        spdlog::error("Failed to load vertex shader {}", FileSystem::GetFullPath("assets/shaders/bypass.vert"));
+        spdlog::error("Failed to load vertex shader {}", FileSystem::GetFullPath("shaders/bypass.vert"));
         return false;
     }
     shaders.emplace_back(ShaderType::FragmentShader);
-    if (!shaders[1].Load(FileSystem::GetFullPath("assets/shaders/phong.frag")))
+    if (!shaders[1].Load(FileSystem::GetFullPath("shaders/phong.frag")))
     {
-        spdlog::error("Failed to load fragment shader {}", FileSystem::GetFullPath("assets/shaders/phong.frag"));
+        spdlog::error("Failed to load fragment shader {}", FileSystem::GetFullPath("shaders/phong.frag"));
         return false;
     }
     m_shader_program = std::make_unique<ShaderProgram>();

@@ -276,6 +276,7 @@ void EditorUI::DrawVec3Control(const std::string& field_name, std::shared_ptr<Co
 
 void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_ptr<Component> component)
 {
+    // FIXME: multiple member value change caused by precision
     ImGui::PushID(field_name.c_str());
     const auto old_quat = component->GetField<glm::quat>(field_name.c_str());
     auto angle = glm::eulerAngles(old_quat);// radius
@@ -287,15 +288,15 @@ void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_
         ImGui::TableNextColumn();
         ImGui::Text("x");
         ImGui::SameLine();
-        ImGui::DragFloat("##x", &angle.x, 0.1f, -180, 180, "%.2f", drag_float_flags);
+        ImGui::DragFloat("##x", &angle.x, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
         ImGui::TableNextColumn();
         ImGui::Text("y");
         ImGui::SameLine();
-        ImGui::DragFloat("##y", &angle.y, 0.1f, -90, 90, "%.2f", drag_float_flags);
+        ImGui::DragFloat("##y", &angle.y, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
         ImGui::TableNextColumn();
         ImGui::Text("z");
         ImGui::SameLine();
-        ImGui::DragFloat("##z", &angle.z, 0.1f, -180, 180, "%.2f", drag_float_flags);
+        ImGui::DragFloat("##z", &angle.z, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
         ImGui::EndTable();
 
         const auto new_quat = glm::quat(glm::radians(angle));
