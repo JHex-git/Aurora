@@ -28,9 +28,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)  
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)  
 
-include(${CMAKE_SOURCE_DIR}/src/ExternalHelper/spdlog.cmake)
-include(${CMAKE_SOURCE_DIR}/src/ExternalHelper/assimp.cmake)
-include(${CMAKE_SOURCE_DIR}/src/ExternalHelper/glad.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/spdlog.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/assimp.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/glad.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/imgui.cmake)
 add_subdirectory(thirdparty)
 

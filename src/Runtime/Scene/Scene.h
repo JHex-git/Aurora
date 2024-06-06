@@ -19,7 +19,7 @@ public:
     ~Scene() = default;
 
     void Serialize(tinyxml2::XMLElement *node) override;
-    void Deserialize(const tinyxml2::XMLElement *node) override;
+    void Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner) override;
 
     void Save();
 

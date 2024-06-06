@@ -13,7 +13,7 @@ REFLECTABLE_IMPL(Transform, m_scale, glm::vec3)
 
 void Transform::Serialize(tinyxml2::XMLElement *node)
 {
-    node->SetName("TransformComponent");
+    node->SetName("Transform");
     auto position_node = node->InsertNewChildElement("Position");
     position_node->SetAttribute("X", m_position.x);
     position_node->SetAttribute("Y", m_position.y);
@@ -31,8 +31,10 @@ void Transform::Serialize(tinyxml2::XMLElement *node)
     scale_node->SetAttribute("Z", m_scale.z);
 }
 
-void Transform::Deserialize(const tinyxml2::XMLElement *node)
+void Transform::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner)
 {
+    Component::Init(owner);
+    
     node->FirstChildElement("Position")->QueryFloatAttribute("X", &m_position.x);
     node->FirstChildElement("Position")->QueryFloatAttribute("Y", &m_position.y);
     node->FirstChildElement("Position")->QueryFloatAttribute("Z", &m_position.z);

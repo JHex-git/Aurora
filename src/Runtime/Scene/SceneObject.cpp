@@ -26,6 +26,10 @@ void SceneObject::Serialize(tinyxml2::XMLElement *node)
     node->SetName("SceneObject");
     node->SetAttribute("Name", m_name.c_str());
 
+    {
+        auto child_node = node->InsertNewChildElement("Temp");
+        m_transform->Serialize(child_node);
+    }
     for (auto& component : m_components)
     {
         auto child_node = node->InsertNewChildElement("Temp");
@@ -38,8 +42,9 @@ void SceneObject::Serialize(tinyxml2::XMLElement *node)
     }
 }
 
-void SceneObject::Deserialize(const tinyxml2::XMLElement *node)
+void SceneObject::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner)
 {
+    m_parent = owner;
     m_components.clear();
 
     m_name = node->Attribute("Name");
@@ -49,20 +54,18 @@ void SceneObject::Deserialize(const tinyxml2::XMLElement *node)
         if (!strcmp(p_child->Name(), "SceneObject"))
         {
             auto scene_object = std::make_shared<SceneObject>();
-            scene_object->Deserialize(p_child);
+            scene_object->Deserialize(p_child, shared_from_this());
             m_children.push_back(scene_object);
         }
         else // Component
         {
-            std::shared_ptr<Component> component_ptr;
-            if (!strcmp(p_child->Name(), "TransformComponent")) // ensure the transform component is the first one.
+            if (!strcmp(p_child->Name(), "Transform"))
             {
-                component_ptr = std::make_shared<Transform>();
-                component_ptr->Deserialize(p_child);
-                m_components.insert(m_components.begin(), component_ptr);
+                m_transform->Deserialize(p_child, shared_from_this());
             }
             else
             {
+                std::shared_ptr<Component> component_ptr;
                 // TODO: Add Component here
                 if (!strcmp(p_child->Name(), "MeshRendererComponent")) component_ptr = std::make_shared<MeshRenderer>();
                 else
@@ -72,7 +75,7 @@ void SceneObject::Deserialize(const tinyxml2::XMLElement *node)
 
                 if (component_ptr != nullptr) 
                 {
-                    component_ptr->Deserialize(p_child);
+                    component_ptr->Deserialize(p_child, shared_from_this());
                     m_components.push_back(component_ptr);
                 }
             }

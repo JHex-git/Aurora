@@ -9,6 +9,7 @@
 #include "Runtime/Scene/Mesh.h"
 #include "glWrapper/VertexBuffer.h"
 #include "glWrapper/ElementBuffer.h"
+#include "Runtime/Scene/SceneObject.h"
 
 namespace Aurora
 {
@@ -21,10 +22,12 @@ public:
     MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : RenderMaterial(), m_mesh(mesh) { m_class_name = "MeshRenderMaterial"; }
     ~MeshRenderMaterial() = default;
 
-    bool Init() override;
+    bool Init(std::shared_ptr<SceneObject> owner) override;
 
     void Serialize(tinyxml2::XMLElement *node) override;
-    void Deserialize(const tinyxml2::XMLElement *node) override;
+    void Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner) override;
+
+    const glm::mat4 GetModelMatrix() const;
 
 private:
     std::shared_ptr<Mesh> m_mesh;

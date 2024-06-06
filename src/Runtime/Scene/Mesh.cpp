@@ -23,10 +23,10 @@ void Mesh::Serialize(tinyxml2::XMLElement* node)
     node->SetAttribute("Path", m_path.c_str());
 }
 
-void Mesh::Deserialize(const tinyxml2::XMLElement* node)
+void Mesh::Deserialize(const tinyxml2::XMLElement* node, std::shared_ptr<SceneObject> owner)
 {
-    m_path = FileSystem::GetFullPath(node->Attribute("Path"));
-    Load(m_path);
+    Component::Init(owner);
+    Load(node->Attribute("Path"));
 }
 
 void Mesh::Update()
@@ -36,7 +36,7 @@ void Mesh::Update()
 bool Mesh::Load(const std::string& file_path)
 {
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(file_path, aiProcess_Triangulate | aiProcess_FlipUVs);
+    const aiScene* scene = importer.ReadFile(FileSystem::GetFullPath(file_path), aiProcess_Triangulate | aiProcess_FlipUVs);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
         spdlog::error("Failed to load mesh: {}", importer.GetErrorString());

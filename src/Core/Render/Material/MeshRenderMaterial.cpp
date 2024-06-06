@@ -2,6 +2,7 @@
 
 // thirdparty include
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
+#include "thirdparty/opengl/glm/glm/gtc/matrix_transform.hpp"
 // Aurora include
 #include "Core/Render/Material/MeshRenderMaterial.h"
 #include "Runtime/Scene/SubMesh.h"
@@ -21,13 +22,15 @@ void MeshRenderMaterial::Serialize(tinyxml2::XMLElement *node)
     node->SetAttribute("Type", "Default");
 }
 
-void MeshRenderMaterial::Deserialize(const tinyxml2::XMLElement *node)
+void MeshRenderMaterial::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner)
 {
-    Init();
+    Init(owner);
 }
 
-bool MeshRenderMaterial::Init()
+bool MeshRenderMaterial::Init(std::shared_ptr<SceneObject> owner)
 {
+    RenderMaterial::Init(owner);
+
     m_vbos.resize(m_mesh->m_submeshes.size());
     for (size_t i = 0; i < m_mesh->m_submeshes.size(); ++i)
     {
@@ -47,5 +50,16 @@ bool MeshRenderMaterial::Init()
 
     RenderSystem::GetInstance().AddMeshRenderMaterial(shared_from_this());
     return true;
+}
+
+const glm::mat4 MeshRenderMaterial::GetModelMatrix() const
+{
+    auto transform = m_scene_object.lock()->GetTransform();
+
+    glm::vec3 position = transform->GetField<glm::vec3>("m_position");
+    glm::quat rotation = transform->GetField<glm::quat>("m_rotation");
+    glm::vec3 scale = transform->GetField<glm::vec3>("m_scale");
+    glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), position) * glm::mat4_cast(rotation) * glm::scale(glm::identity<glm::mat4>(), scale);
+    return model;
 }
 } // namespace Aurora

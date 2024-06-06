@@ -30,6 +30,7 @@ void Scene::LoadMesh(std::string file_path)
     auto scene_object = std::make_shared<SceneObject>();
 
     auto mesh_renderer = std::make_shared<MeshRenderer>();
+    mesh_renderer->Init(scene_object);
     mesh_renderer->LoadMesh(file_path);
 
     scene_object->AddComponent(mesh_renderer);
@@ -53,7 +54,7 @@ void Scene::Serialize(tinyxml2::XMLElement *node)
     }
 }
 
-void Scene::Deserialize(const tinyxml2::XMLElement *node)
+void Scene::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner)
 {
     m_scene_objects.clear();
 
@@ -64,7 +65,7 @@ void Scene::Deserialize(const tinyxml2::XMLElement *node)
         if (!strcmp(p_child->Name(), "SceneObject"))
         {
             auto scene_object = std::make_shared<SceneObject>();
-            scene_object->Deserialize(p_child);
+            scene_object->Deserialize(p_child, nullptr);
             m_scene_objects.push_back(scene_object);
         }
         else

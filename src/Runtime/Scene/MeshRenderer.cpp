@@ -26,8 +26,9 @@ void MeshRenderer::Serialize(tinyxml2::XMLElement *node)
     }
 }
 
-void MeshRenderer::Deserialize(const tinyxml2::XMLElement *node)
+void MeshRenderer::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner)
 {
+    Component::Init(owner);
     m_mesh = nullptr;
     m_material = nullptr;
 
@@ -37,7 +38,7 @@ void MeshRenderer::Deserialize(const tinyxml2::XMLElement *node)
         if (!strcmp(p_child->Name(), "Mesh"))
         {
             m_mesh = std::make_shared<Mesh>();
-            m_mesh->Deserialize(p_child);
+            m_mesh->Deserialize(p_child, owner);
         }
         else if (!strcmp(p_child->Name(), "Material"))
         {
@@ -50,7 +51,7 @@ void MeshRenderer::Deserialize(const tinyxml2::XMLElement *node)
                     return;
                 }
                 m_material = std::make_shared<MeshRenderMaterial>(m_mesh);
-                m_material->Deserialize(p_child);
+                m_material->Deserialize(p_child, owner);
             }
             else spdlog::error("Unknown material type {} in MeshRendererComponent.", type);
         }
@@ -69,9 +70,10 @@ void MeshRenderer::Update()
 void MeshRenderer::LoadMesh(const std::string& path)
 {
     m_mesh = std::make_shared<Mesh>();
+    m_mesh->Init(m_scene_object.lock());
     m_mesh->Load(path);
 
     m_material = std::make_shared<MeshRenderMaterial>(m_mesh);
-    m_material->Init();
+    m_material->Init(m_scene_object.lock());
 }
 } // namespace Aurora

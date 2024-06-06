@@ -15,10 +15,16 @@ class Transform : public Component
 {
 public:
     Transform() : Component() { m_class_name = "Transform"; }
+    Transform(const Transform& other) : Transform()
+    {
+        m_position = other.m_position;
+        m_rotation = other.m_rotation;
+        m_scale = other.m_scale;
+    }
     ~Transform() = default;
 
     void Serialize(tinyxml2::XMLElement *node) override final;
-    void Deserialize(const tinyxml2::XMLElement *node) override final;
+    void Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner) override final;
 
 private:
     REFLECTABLE_DECLARE(Transform, m_position)

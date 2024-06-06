@@ -49,6 +49,6 @@ void SceneManager::LoadScene(const std::string& scene_path)
     tinyxml2::XMLDocument doc;
     doc.LoadFile(scene_path.c_str());
     auto root = doc.RootElement();
-    m_scene->Deserialize(root);
+    m_scene->Deserialize(root, nullptr);
 }
 } // namespace Aurora

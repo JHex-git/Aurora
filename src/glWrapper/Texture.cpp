@@ -5,6 +5,7 @@
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
 #include "glWrapper/Texture.h"
+#include "Utility/FileSystem.h"
 
 namespace Aurora
 {
@@ -57,7 +58,8 @@ bool Texture::Load(const std::string& path, WrapType wrap_s, WrapType wrap_t, Fi
         spdlog::error("Mipmap generation requires mipmap min filter");
         return m_isLoaded = false;
     }
-    void* data = require_high_precision ? stbi_loadf(path.c_str(), &m_width, &m_height, &m_channels, 0) : (void *)stbi_load(path.c_str(), &m_width, &m_height, &m_channels, 0);
+    std::string full_path = FileSystem::GetFullPath(path);
+    void* data = require_high_precision ? stbi_loadf(full_path.c_str(), &m_width, &m_height, &m_channels, 0) : (void *)stbi_load(full_path.c_str(), &m_width, &m_height, &m_channels, 0);
     if (data)
     {
         GLenum format;

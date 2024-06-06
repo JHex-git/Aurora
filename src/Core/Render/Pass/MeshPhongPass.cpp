@@ -47,13 +47,9 @@ void MeshPhongPass::Render()
         m_shader_program->Bind();
         for (auto& material : m_mesh_render_materials)
         {
-            // TODO: delete this
             // render the loaded model
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
-            model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));	// it's a bit too big for our scene, so scale it down
+            const glm::mat4 model = material->GetModelMatrix();
             m_shader_program->SetUniform("uModel", model);
-            // m_shader_program->SetUniform("uModel", glm::identity<glm::mat4>());
             m_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
             m_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
             m_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());

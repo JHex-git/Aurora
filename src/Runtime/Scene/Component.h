@@ -16,13 +16,20 @@ public:
     Component() = default;
     ~Component() = default;
 
-    virtual bool Init() { return true; }
+    virtual bool Init(std::shared_ptr<SceneObject> owner) 
+    {
+        m_scene_object = owner;
+        return true;
+    }
     virtual void Update() { }
 
     virtual void* GetThis() override { return this; }
 
     virtual void Serialize(tinyxml2::XMLElement *node) override = 0;
-    virtual void Deserialize(const tinyxml2::XMLElement *node) override = 0;
+    virtual void Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner) override = 0;
+
+protected:
+    std::weak_ptr<SceneObject> m_scene_object;
 };
 
 } // namespace Aurora

@@ -160,10 +160,12 @@ void EditorUI::ShowInspectorPanel()
     {
         ImGui::PushID(selected_scene_object->GetName().c_str());
         ImGui::Text(selected_scene_object->GetName().c_str());
+
         auto components = selected_scene_object->GetComponents();
-        for (auto& component : components)
+        for (unsigned int i = 0; i <= components.size(); ++i)
         {
-            std::string component_name = component->GetClassName();
+            std::shared_ptr<Component> component = (i == 0) ? selected_scene_object->GetTransform() : components[i - 1]; // FIXME: double free
+            std::string component_name = component->GetClassReflectName();
 
             if (ImGui::CollapsingHeader(component_name.c_str()))
             {
@@ -252,15 +254,15 @@ void EditorUI::DrawVec3Control(const std::string& field_name, std::shared_ptr<Co
         ImGui::TableNextColumn();
         ImGui::Text("x");
         ImGui::SameLine();
-        ImGui::DragFloat("##x", &vec3.x, 1.f, FLT_MIN, FLT_MAX, "%.2f", drag_float_flags);
+        ImGui::DragFloat("##x", &vec3.x, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
         ImGui::TableNextColumn();
         ImGui::Text("y");
         ImGui::SameLine();
-        ImGui::DragFloat("##y", &vec3.y, 1.f, FLT_MIN, FLT_MAX, "%.2f", drag_float_flags);
+        ImGui::DragFloat("##y", &vec3.y, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
         ImGui::TableNextColumn();
         ImGui::Text("z");
         ImGui::SameLine();
-        ImGui::DragFloat("##z", &vec3.z, 1.f, FLT_MIN, FLT_MAX, "%.2f", drag_float_flags);
+        ImGui::DragFloat("##z", &vec3.z, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
         ImGui::EndTable();
 
         if (vec3 != old_vec3)
