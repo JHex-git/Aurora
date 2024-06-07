@@ -18,7 +18,7 @@ bool MeshPhongPass::Init()
 {
     std::vector<Shader> shaders;
     shaders.emplace_back(ShaderType::VertexShader);
-    if (!shaders[0].Load(FileSystem::GetFullPath("shaders/bypass.vert")))
+    if (!shaders[0].Load(FileSystem::GetFullPath("shaders/mesh.vert")))
     {
         spdlog::error("Failed to load vertex shader {}", FileSystem::GetFullPath("shaders/bypass.vert"));
         return false;
@@ -39,7 +39,7 @@ bool MeshPhongPass::Init()
     return true;
 }
 
-void MeshPhongPass::Render()
+void MeshPhongPass::Render(const std::array<int, 2>& viewport_size)
 {
     if (m_shader_program != nullptr)
     {

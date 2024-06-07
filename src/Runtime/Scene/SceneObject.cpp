@@ -4,6 +4,7 @@
 
 // Aurora include
 #include "Runtime/Scene/SceneObject.h"
+#include "Runtime/Scene/MeshRenderer.h"
 
 namespace Aurora
 {

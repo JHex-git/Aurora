@@ -24,7 +24,7 @@ bool ViewWindow::Init()
 void ViewWindow::Render()
 {
     glViewport(m_view_info.position[0], m_view_info.position[1], m_view_info.size[0], m_view_info.size[1]);
-    m_render_pipeline->Render();
+    m_render_pipeline->Render(m_view_info.size);
     RenderViewUI();
 }
 

@@ -19,6 +19,7 @@ class SubMesh
 {
     friend class MeshRenderMaterial;
     friend class MeshPhongPass;
+    friend class MeshOutlinePass;
 public:
     SubMesh(std::vector<Vertex>&& vertices, std::vector<unsigned int>&& indices, std::vector<TextureInfo>&& textures)
         : m_vertices(vertices), m_indices(indices), m_textures(textures) { }

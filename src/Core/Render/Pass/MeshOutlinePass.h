@@ -10,19 +10,19 @@
 namespace Aurora
 {
 
-class MeshPhongPass : public RenderPass
+class MeshOutlinePass : public RenderPass
 {
 public:
-    MeshPhongPass() = default;
-    ~MeshPhongPass() = default;
+    MeshOutlinePass() = default;
+    ~MeshOutlinePass() = default;
 
     bool Init() override;
     void Render(const std::array<int, 2>& viewport_size) override;
 
-    void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material) { m_mesh_render_materials.push_back(mesh_render_material); }
+    void SetMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material) { m_selected_mesh_render_material = mesh_render_material; }
 
 private:
     std::unique_ptr<ShaderProgram> m_shader_program;
-    std::vector<std::shared_ptr<MeshRenderMaterial>> m_mesh_render_materials;
+    std::shared_ptr<MeshRenderMaterial> m_selected_mesh_render_material;
 };
 } // namespace Aurora

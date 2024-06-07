@@ -17,6 +17,7 @@ namespace Aurora
 class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from_this<MeshRenderMaterial>
 {
     friend class MeshPhongPass;
+    friend class MeshOutlinePass;
     
 public:
     MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : RenderMaterial(), m_mesh(mesh) { m_class_name = "MeshRenderMaterial"; }

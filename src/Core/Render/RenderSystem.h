@@ -5,7 +5,7 @@
 // thirdparty include
 
 // Aurora include
-#include "Core/Render/Pass/EditorUIPass.h"
+#include "Core/Render/EditorUIRenderer.h"
 #include "Core/Render/ViewWindow.h"
 
 class GLFWWindow;
@@ -39,7 +39,7 @@ private:
     RenderSystem() = default;
 
 private:
-    std::unique_ptr<EditorUIPass> m_editor_ui_pass;
+    std::unique_ptr<EditorUIRenderer> m_editor_ui_renderer;
     std::unique_ptr<ViewWindow> m_view_window;
 };
 } // namespace Aurora

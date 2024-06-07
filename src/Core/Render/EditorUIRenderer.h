@@ -11,14 +11,14 @@
 namespace Aurora
 {
 
-class EditorUIPass : public RenderPass
+class EditorUIRenderer
 {
 public:
-    EditorUIPass() = default;
-    ~EditorUIPass();
+    EditorUIRenderer() = default;
+    ~EditorUIRenderer();
 
-    bool Init() override final;
-    void Render() override final;
+    bool Init();
+    void Render();
 
 private:
     std::vector<std::shared_ptr<WindowUI>> m_window_UIs;

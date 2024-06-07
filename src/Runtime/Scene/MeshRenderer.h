@@ -5,7 +5,7 @@
 
 // Aurora include
 #include "Runtime/Scene/Mesh.h"
-#include "Core/Render/Material/RenderMaterial.h"
+#include "Core/Render/Material/MeshRenderMaterial.h"
 
 namespace Aurora
 {
@@ -23,8 +23,10 @@ public:
 
     void LoadMesh(const std::string& path);
 
+    inline std::shared_ptr<MeshRenderMaterial> GetRenderMaterial() const { return m_material; }
+
 private:
     std::shared_ptr<Mesh> m_mesh;
-    std::shared_ptr<RenderMaterial> m_material;
+    std::shared_ptr<MeshRenderMaterial> m_material;
 };
 } // namespace Aurora

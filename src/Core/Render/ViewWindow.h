@@ -28,6 +28,7 @@ public:
 
     void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material) { m_render_pipeline->AddMeshRenderMaterial(mesh_render_material); }
     void UpdateViewInfo(ViewInfo&& view_info) { m_view_info = std::move(view_info); }
+    std::array<int, 2> GetSize() const { return m_view_info.size; }
 
 private:
     void OnMousePosCallback(double xpos, double ypos);

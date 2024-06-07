@@ -8,14 +8,14 @@
 #include "thirdparty/opengl/glfw/include/GLFW/glfw3.h"
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
-#include "Core/Render/Pass/EditorUIPass.h"
+#include "Core/Render/EditorUIRenderer.h"
 #include "Editor/EditorUI.h"
 #include "Core/Render/WindowSystem.h"
 
 namespace Aurora
 {
 
-bool EditorUIPass::Init()
+bool EditorUIRenderer::Init()
 {
     GLFWwindow* window = WindowSystem::GetInstance().GetWindow();
     // Setup Dear ImGui context
@@ -41,7 +41,7 @@ bool EditorUIPass::Init()
     return true;
 }
 
-void EditorUIPass::Render()
+void EditorUIRenderer::Render()
 {
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
@@ -61,7 +61,7 @@ void EditorUIPass::Render()
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-EditorUIPass::~EditorUIPass()
+EditorUIRenderer::~EditorUIRenderer()
 {
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

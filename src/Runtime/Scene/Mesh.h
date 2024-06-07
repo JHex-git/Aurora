@@ -18,6 +18,7 @@ class Mesh : public Component
 {
     friend class MeshRenderMaterial;
     friend class MeshPhongPass;
+    friend class MeshOutlinePass;
 public:
     Mesh() : Component() { m_class_name = "Mesh"; }
     ~Mesh() = default;

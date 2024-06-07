@@ -16,6 +16,6 @@ public:
     ~RenderPass() = default;
 
     virtual bool Init() = 0;
-    virtual void Render() = 0;
+    virtual void Render(const std::array<int, 2>& viewport_size) = 0;
 };
 } // namespace Aurora

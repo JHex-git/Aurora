@@ -8,7 +8,6 @@
 #include "Runtime/Scene/Component.h"
 #include "Core/Render/Pass/RenderPass.h"
 #include "Runtime/Scene/Mesh.h"
-#include "Runtime/Scene/MeshRenderer.h"
 #include "Runtime/Scene/Transform.h"
 
 namespace Aurora
@@ -37,6 +36,17 @@ public:
     const std::vector<std::shared_ptr<Component>>& GetComponents() const { return m_components; }
     const std::vector<std::shared_ptr<SceneObject>>& GetChildren() const { return m_children; }
     std::shared_ptr<Transform> GetTransform() const { return m_transform; }
+
+    template <typename T>
+    std::shared_ptr<T> TryGetComponent()
+    {
+        for (auto component : m_components)
+        {
+            auto casted_component = std::dynamic_pointer_cast<T>(component);
+            if (casted_component != nullptr) return casted_component;
+        }
+        return nullptr;
+    }
 
 private:
     std::shared_ptr<Transform> m_transform;
