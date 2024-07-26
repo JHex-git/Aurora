@@ -13,7 +13,7 @@ namespace Aurora
 class Component : public Serializable, public Reflectable
 {
 public:
-    Component() = default;
+    Component(std::string&& class_name) { m_class_name = std::move(class_name); }
     ~Component() = default;
 
     virtual bool Init(std::shared_ptr<SceneObject> owner) 

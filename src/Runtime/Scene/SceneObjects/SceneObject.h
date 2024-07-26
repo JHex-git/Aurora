@@ -5,10 +5,10 @@
 // thirdparty include
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
-#include "Runtime/Scene/Component.h"
+#include "Runtime/Scene/Components/Component.h"
 #include "Core/Render/Pass/RenderPass.h"
-#include "Runtime/Scene/Mesh.h"
-#include "Runtime/Scene/Transform.h"
+#include "Runtime/Scene/Components/Mesh.h"
+#include "Runtime/Scene/Components/Transform.h"
 
 namespace Aurora
 {

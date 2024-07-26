@@ -5,10 +5,11 @@
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
 #include "Runtime/Scene/Scene.h"
-#include "Runtime/Scene/Mesh.h"
+#include "Runtime/Scene/Components/Mesh.h"
 #include "Core/Render/Material/MeshRenderMaterial.h"
 #include "Utility/FileSystem.h"
-#include "Runtime/Scene/MeshRenderer.h"
+#include "Runtime/Scene/Components/MeshRenderer.h"
+#include "Runtime/Scene/Components/SkyboxRenderer.h"
 
 namespace Aurora
 {
@@ -35,6 +36,20 @@ void Scene::LoadMesh(std::string file_path)
 
     scene_object->AddComponent(mesh_renderer);
     m_scene_objects.push_back(std::move(scene_object));
+    m_is_dirty = true;
+}
+
+void Scene::AddSkybox(std::array<std::string, 6>&& skybox_paths)
+{
+    auto scene_object = std::make_shared<SceneObject>("Skybox");
+    
+    auto skybox_renderer = std::make_shared<SkyboxRenderer>();
+    skybox_renderer->Init(scene_object);
+    skybox_renderer->Load(std::move(skybox_paths));
+
+    scene_object->AddComponent(skybox_renderer);
+    m_scene_objects.push_back(std::move(scene_object));
+    m_is_dirty = true;
 }
 
 void Scene::Update()

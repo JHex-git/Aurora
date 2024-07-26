@@ -5,12 +5,11 @@
 #include "thirdparty/opengl/glm/glm/gtc/matrix_transform.hpp"
 // Aurora include
 #include "Core/Render/Material/MeshRenderMaterial.h"
-#include "Runtime/Scene/SubMesh.h"
+#include "Runtime/Scene/Components/SubMesh.h"
 #include "glWrapper/Texture.h"
 #include "Runtime/Scene/Camera.h"
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/LightManager.h"
-#include "Runtime/Scene/TextureManager.h"
 #include "Core/Render/RenderSystem.h"
 
 namespace Aurora

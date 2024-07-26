@@ -34,6 +34,7 @@ public:
 
     void UpdateViewInfo(ViewInfo&& view_info) { m_view_window->UpdateViewInfo(std::move(view_info)); }
     void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material);
+    void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material);
 
 private:
     RenderSystem() = default;

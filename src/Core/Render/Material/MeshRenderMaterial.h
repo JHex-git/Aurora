@@ -4,12 +4,11 @@
 // thirdparty include
 
 // Aurora include
-#include "glWrapper/Shader.h"
 #include "Core/Render/Material/RenderMaterial.h"
-#include "Runtime/Scene/Mesh.h"
+#include "Runtime/Scene/Components/Mesh.h"
 #include "glWrapper/VertexBuffer.h"
 #include "glWrapper/ElementBuffer.h"
-#include "Runtime/Scene/SceneObject.h"
+#include "Runtime/Scene/SceneObjects/SceneObject.h"
 
 namespace Aurora
 {
@@ -18,9 +17,10 @@ class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from
 {
     friend class MeshPhongPass;
     friend class MeshOutlinePass;
+    friend class SkyboxPass;
     
 public:
-    MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : RenderMaterial(), m_mesh(mesh) { m_class_name = "MeshRenderMaterial"; }
+    MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : RenderMaterial("MeshRenderMaterial"), m_mesh(mesh) { }
     ~MeshRenderMaterial() = default;
 
     bool Init(std::shared_ptr<SceneObject> owner) override;

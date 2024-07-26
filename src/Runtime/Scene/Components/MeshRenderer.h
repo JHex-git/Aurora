@@ -4,7 +4,7 @@
 // thirdparty include
 
 // Aurora include
-#include "Runtime/Scene/Mesh.h"
+#include "Runtime/Scene/Components/Mesh.h"
 #include "Core/Render/Material/MeshRenderMaterial.h"
 
 namespace Aurora
@@ -13,7 +13,7 @@ namespace Aurora
 class MeshRenderer : public Component
 {
 public:
-    MeshRenderer() : Component() { m_class_name = "MeshRenderer"; }
+    MeshRenderer() : Component("MeshRenderer") { }
     ~MeshRenderer() = default;
 
     void Serialize(tinyxml2::XMLElement *node) override;

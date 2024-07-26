@@ -6,6 +6,7 @@
 // Aurora include
 #include "Core/Render/Pass/RenderPass.h"
 #include "Core/Render/Material/MeshRenderMaterial.h"
+#include "glWrapper/Shader.h"
 
 namespace Aurora
 {

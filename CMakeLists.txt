@@ -10,9 +10,9 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR})
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set(CMAKE_CXX_FLAGS "-std=c++17")
+
 if(MSVC)  
     add_compile_options(/wd4819)  
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)

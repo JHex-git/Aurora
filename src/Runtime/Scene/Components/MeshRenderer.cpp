@@ -3,7 +3,7 @@
 // thirdparty include
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
-#include "Runtime/Scene/MeshRenderer.h"
+#include "Runtime/Scene/Components/MeshRenderer.h"
 #include "Core/Render/Material/MeshRenderMaterial.h"
 
 namespace Aurora

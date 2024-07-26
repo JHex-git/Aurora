@@ -5,7 +5,7 @@
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
 #include "Runtime/Scene/SceneManager.h"
-#include "Runtime/Scene/Mesh.h"
+#include "Runtime/Scene/Components/Mesh.h"
 #include "Core/Render/Material/MeshRenderMaterial.h"
 #include "Utility/FileSystem.h"
 

@@ -5,7 +5,7 @@
 #include "thirdparty/opengl/glm/glm/glm.hpp"
 #include "thirdparty/opengl/glm/glm/gtc/quaternion.hpp"
 // Aurora include
-#include "Runtime/Scene/Component.h"
+#include "Runtime/Scene/Components/Component.h"
 #include "Utility/Reflection/ReflectionRegister.h"
 
 namespace Aurora
@@ -14,7 +14,7 @@ namespace Aurora
 class Transform : public Component
 {
 public:
-    Transform() : Component() { m_class_name = "Transform"; }
+    Transform() : Component("Transform") { }
     Transform(const Transform& other) : Transform()
     {
         m_position = other.m_position;

@@ -1,12 +1,19 @@
 #pragma once
+// std include
+#include <vector>
 #include <string>
-
-#include "glad/glad.h"
+#include <optional>
+// thirdparty include
+#include "thirdparty/opengl/glad/include/glad/glad.h"
+// Aurora include
 
 namespace Aurora
 {
 
-class Texture
+class Texture;
+using TextureID = GLuint;
+
+class TextureBuilder
 {
 public:
     enum class WrapType : GLint
@@ -27,7 +34,81 @@ public:
         LinearMipmapLinear = GL_LINEAR_MIPMAP_LINEAR
     };
 
-    Texture();
+    enum class CubeFace : GLenum
+    {
+        PosX = GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        NegX = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+        PosY = GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+        NegY = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        PosZ = GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+        NegZ = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+    };
+
+    TextureBuilder& WithWrapS(WrapType wrap_s)
+    {
+        m_wrap_s = wrap_s;
+        return *this;
+    }
+
+    TextureBuilder& WithWrapT(WrapType wrap_t)
+    {
+        m_wrap_t = wrap_t;
+        return *this;
+    }
+
+    TextureBuilder& WithWrapR(WrapType wrap_r)
+    {
+        m_wrap_r = wrap_r;
+        return *this;
+    }
+
+    TextureBuilder& WithMinFilter(FilterType min_filter)
+    {
+        m_min_filter = min_filter;
+        return *this;
+    }
+
+    TextureBuilder& WithMagFilter(FilterType mag_filter)
+    {
+        m_mag_filter = mag_filter;
+        return *this;
+    }
+
+    TextureBuilder& WithGenMipmap(bool gen_mipmap)
+    {
+        m_gen_mipmap = gen_mipmap;
+        return *this;
+    }
+
+    TextureBuilder& WithRequireHighPrecision(bool require_high_precision)
+    {
+        m_require_high_precision = require_high_precision;
+        return *this;
+    }
+
+    std::optional<Texture> MakeTexture2D(const std::string& path);
+
+    std::optional<Texture> MakeTextureCubeMap(const std::array<std::string, 6>& paths);
+
+private:
+    WrapType m_wrap_s = WrapType::Repeat;
+    WrapType m_wrap_t = WrapType::Repeat;
+    WrapType m_wrap_r = WrapType::Repeat;
+    FilterType m_min_filter = FilterType::Linear;
+    FilterType m_mag_filter = FilterType::Linear;
+    bool m_gen_mipmap = false;
+    bool m_require_high_precision = false;
+};
+
+class Texture
+{
+public:
+    enum class TextureType : GLenum
+    {
+        Texture2D = GL_TEXTURE_2D,
+        Cubemap = GL_TEXTURE_CUBE_MAP
+    };
+
     ~Texture();
 
     Texture(const Texture&) = delete;
@@ -36,16 +117,43 @@ public:
     Texture(Texture&&);
     Texture& operator=(Texture&&);
 
-    bool Load(const std::string& path, WrapType wrap_s = WrapType::Repeat, WrapType wrap_t = WrapType::Repeat, FilterType min_filter = FilterType::NearestMipmapLinear, FilterType mag_filter = FilterType::Linear, bool gen_mipmap = true, bool require_high_precision = false);
     void Bind(unsigned int unit = 0);
     void Unbind();
 
+    unsigned int GetID() const { return m_textureID; }
+
 private:
-    unsigned int m_textureID;
+    friend class TextureBuilder;
+    Texture(TextureType texture_type);
+    
+    TextureType m_type;
+    TextureID m_textureID;
     int m_unit;
-    int m_width;
-    int m_height;
-    int m_channels;
-    bool m_isLoaded;
 };
+
+struct SurfaceTexture
+{
+    SurfaceTexture(const SurfaceTexture&) = delete;
+    SurfaceTexture& operator=(const SurfaceTexture&) = delete;
+
+    SurfaceTexture(SurfaceTexture&& other)
+        : texture(std::move(other.texture)), type(std::move(other.type)) { }
+
+    SurfaceTexture& operator=(SurfaceTexture&& other)
+    {
+        if (this != &other)
+        {
+            texture = std::move(other.texture);
+            type = std::move(other.type);
+        }
+        return *this;
+    }
+
+    SurfaceTexture(Texture&& texture, const std::string& type)
+        : texture(std::move(texture)), type(type) { }
+
+    Texture texture;
+    std::string type;
+};
+
 } // namespace Aurora

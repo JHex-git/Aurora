@@ -30,6 +30,13 @@ void EditorUI::Layout()
     ShowInspectorPanel();
     ShowViewPanel();
     ShowFileContentPanel();
+
+    ShowDialog();
+}
+
+void EditorUI::ShowDialog()
+{
+    ShowSkyboxDialog();
 }
 
 void EditorUI::ShowMainPanel()
@@ -93,9 +100,13 @@ void EditorUI::ShowMainPanel()
             {
                 // TODO:
             }
+
+            if (ImGui::MenuItem("Add Skybox"))
+            {
+                m_show_skybox_dialog = true;
+            }
             ImGui::EndMenu();
         }
-
         ImGui::EndMainMenuBar();
     }
 
@@ -307,5 +318,82 @@ void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_
         }
     }
     ImGui::PopID();
+}
+
+void EditorUI::ShowSkyboxDialog()
+{
+    if (m_show_skybox_dialog)
+    {
+        // TODO:
+        static char right[256] = "assets/textures/skybox/right.jpg";
+        static char left[256] = "assets/textures/skybox/left.jpg";
+        static char top[256] = "assets/textures/skybox/top.jpg";
+        static char bottom[256] = "assets/textures/skybox/bottom.jpg";
+        static char front[256] = "assets/textures/skybox/front.jpg";
+        static char back[256] = "assets/textures/skybox/back.jpg";
+
+
+        ImGui::OpenPopup("Skybox Dialog");
+        if (ImGui::BeginPopupModal("Skybox Dialog", &m_show_skybox_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+            
+            if (ImGui::BeginTable("##TableSkyboxDialog", 2))
+            {
+                float first_column_width = ImGui::CalcTextSize("Bottom").x;
+                ImGui::TableSetupColumn("##ColumnSkyboxDialog1", ImGuiTableColumnFlags_WidthFixed, first_column_width);
+                ImGui::TableSetupColumn("##ColumnSkyboxDialog2", ImGuiTableColumnFlags_WidthFixed, 300.f);
+
+                ImGui::TableNextColumn();
+                ImGui::Text("Right");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputText("##RightSkybox", right, sizeof(right), ImGuiInputTextFlags_None);
+                ImGui::TableNextColumn();
+                ImGui::Text("Left");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputText("##LeftSkybox", left, sizeof(left), ImGuiInputTextFlags_None);
+                ImGui::TableNextColumn();
+                ImGui::Text("Top");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputText("##TopSkybox", top, sizeof(top), ImGuiInputTextFlags_None);
+                ImGui::TableNextColumn();
+                ImGui::Text("Bottom");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputText("##BottomSkybox", bottom, sizeof(bottom), ImGuiInputTextFlags_None);
+                ImGui::TableNextColumn();
+                ImGui::Text("Front");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputText("##FrontSkybox", front, sizeof(front), ImGuiInputTextFlags_None);
+                ImGui::TableNextColumn();
+                ImGui::Text("Back");
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputText("##BackSkybox", back, sizeof(back), ImGuiInputTextFlags_None);
+
+                ImGui::EndTable();
+            }
+
+            const auto& style = ImGui::GetStyle();
+            float confirmButtonWidth = ImGui::CalcTextSize("Confirm").x + style.FramePadding.x * 2.f;
+            float cancelButtonWidth = ImGui::CalcTextSize("Cancel").x + style.FramePadding.x * 2.f;
+            float widthNeeded = confirmButtonWidth + cancelButtonWidth + style.ItemSpacing.x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - widthNeeded);
+            if (ImGui::Button("Confirm##SkyboxDialog"))
+            {
+                m_show_skybox_dialog = false;
+                SceneManager::GetInstance().GetScene()->AddSkybox({right, left, top, bottom, front, back});
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel##SkyboxDialog"))
+            {
+                m_show_skybox_dialog = false;
+            }
+            ImGui::EndPopup();
+        }
+    }
 }
 } // namespace Aurora

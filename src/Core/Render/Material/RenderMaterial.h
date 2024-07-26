@@ -4,7 +4,7 @@
 // thirdparty include
 
 // Aurora include
-#include "Runtime/Scene/Component.h"
+#include "Runtime/Scene/Components/Component.h"
 
 namespace Aurora
 {
@@ -12,7 +12,7 @@ namespace Aurora
 class RenderMaterial : public Component
 {
 public:
-    RenderMaterial() : Component() { m_class_name = "RenderMaterial"; }
+    RenderMaterial(std::string&& render_material_class_name) : Component(std::move(render_material_class_name)) { }
     ~RenderMaterial() = default;
 
     virtual void Update() override { }

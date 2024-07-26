@@ -4,7 +4,7 @@
 // thirdparty include
 #include "thirdparty/opengl/glm/glm/glm.hpp"
 // Aurora include
-#include "Runtime/Scene/Light.h"
+#include "Runtime/Scene/SceneObjects/Lights/Light.h"
 
 namespace Aurora
 {

@@ -5,7 +5,7 @@
 // thirdparty include
 
 // Aurora include
-#include "Runtime/Scene/SceneObject.h"
+#include "Runtime/Scene/SceneObjects/SceneObject.h"
 #include "Runtime/Scene/Scene.h"
 #include "Utility/Serializable.h"
 

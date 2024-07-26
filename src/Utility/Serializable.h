@@ -4,7 +4,6 @@
 // thirdparty include
 #include "thirdparty/tinyxml2/tinyxml2.h"
 // Aurora include
-// #include "Runtime/Scene/SceneObject.h"
 
 namespace Aurora
 {

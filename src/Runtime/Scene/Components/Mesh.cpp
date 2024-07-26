@@ -7,8 +7,8 @@
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 #include "thirdparty/opengl/glm/glm/gtc/matrix_transform.hpp"
 // Aurora include
-#include "Runtime/Scene/Mesh.h"
-#include "Runtime/Scene/SubMesh.h"
+#include "Runtime/Scene/Components/Mesh.h"
+#include "Runtime/Scene/Components/SubMesh.h"
 #include "glWrapper/Texture.h"
 #include "ExternalHelper/AssimpHelper.h"
 #include "Utility/FileSystem.h"
@@ -29,6 +29,10 @@ void Mesh::Deserialize(const tinyxml2::XMLElement* node, std::shared_ptr<SceneOb
     Load(node->Attribute("Path"));
 }
 
+SurfaceTexture& Mesh::GetTexture(TextureID id)
+{
+    return m_loaded_textures.find(id)->second;
+}
 void Mesh::Update()
 {
 }
@@ -65,11 +69,11 @@ void Mesh::ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4
     }
 }
 
-SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform) const
+SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform)
 {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
-    std::vector<TextureInfo> textures;
+    std::vector<TextureID> textures;
     auto normalMatrix = glm::transpose(glm::inverse(transform));
     // process vertices
     for(unsigned int i = 0; i < mesh->mNumVertices; i++)
@@ -107,46 +111,58 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         auto base_path_str = base_path.remove_filename().string();
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
         // diffuse maps
-        std::vector<TextureInfo> albedoMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, base_path_str);
+        std::vector<TextureID> albedoMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, base_path_str);
         textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
         // specular maps
-        std::vector<TextureInfo> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, base_path_str);
+        std::vector<TextureID> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, base_path_str);
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
         // normal maps
-        std::vector<TextureInfo> normalMaps = LoadMaterialTextures(material, aiTextureType_NORMALS, base_path_str);
+        std::vector<TextureID> normalMaps = LoadMaterialTextures(material, aiTextureType_NORMALS, base_path_str);
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
         // height maps
-        std::vector<TextureInfo> heightMaps = LoadMaterialTextures(material, aiTextureType_HEIGHT, base_path_str);
+        std::vector<TextureID> heightMaps = LoadMaterialTextures(material, aiTextureType_HEIGHT, base_path_str);
         textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
         // metallic maps
-        std::vector<TextureInfo> metallicMaps = LoadMaterialTextures(material, aiTextureType_METALNESS, base_path_str);
+        std::vector<TextureID> metallicMaps = LoadMaterialTextures(material, aiTextureType_METALNESS, base_path_str);
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
         // // roughness maps
-        // std::vector<TextureInfo> roughnessMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, base_path_str);
+        // std::vector<TextureID> roughnessMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, base_path_str);
         // textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
         // emissive maps
-        std::vector<TextureInfo> emissiveMaps = LoadMaterialTextures(material, aiTextureType_EMISSIVE, base_path_str);
+        std::vector<TextureID> emissiveMaps = LoadMaterialTextures(material, aiTextureType_EMISSIVE, base_path_str);
         textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
         // displacement maps
-        std::vector<TextureInfo> displacementMaps = LoadMaterialTextures(material, aiTextureType_DISPLACEMENT, base_path_str);
+        std::vector<TextureID> displacementMaps = LoadMaterialTextures(material, aiTextureType_DISPLACEMENT, base_path_str);
         textures.insert(textures.end(), displacementMaps.begin(), displacementMaps.end());
         // ao maps
-        std::vector<TextureInfo> aoMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, base_path_str);
+        std::vector<TextureID> aoMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, base_path_str);
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
     }
     return SubMesh(std::move(vertices), std::move(indices), std::move(textures));
 }
 
-std::vector<TextureInfo> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextureType type, const std::string& base_path) const
+std::vector<TextureID> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextureType type, const std::string& base_path)
 {
-    std::vector<TextureInfo> textures;
+    std::vector<TextureID> texture_ids;
     for(unsigned int i = 0; i < material->GetTextureCount(type); i++)
     {
         aiString path;
         material->GetTexture(type, i, &path);
-        textures.push_back(TextureInfo{base_path + path.C_Str(), ConvertaiTextureTypeToString(type)});
+        auto type_str = std::string(aiTextureTypeToString(type));
+        auto full_path = base_path + path.C_Str();
+        if (auto it = m_texturePath_to_id.find(full_path); it != m_texturePath_to_id.end())
+        {
+            texture_ids.push_back(it->second);
+            continue;
+        }
+        if (auto texture = TextureBuilder().WithWrapS(TextureBuilder::WrapType::ClampToEdge).WithWrapT(TextureBuilder::WrapType::ClampToEdge).MakeTexture2D(full_path))
+        {
+            m_texturePath_to_id.insert({full_path, texture->GetID()});
+            texture_ids.push_back(texture->GetID());
+            m_loaded_textures.insert({texture->GetID(), SurfaceTexture(std::move(*texture), std::move(type_str))});
+        }
     }
-    return textures;
+    return texture_ids;
 }
 
 std::string Mesh::ConvertaiTextureTypeToString(aiTextureType type) const

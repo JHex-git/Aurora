@@ -27,4 +27,9 @@ void RenderSystem::AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mes
 {
     m_view_window->AddMeshRenderMaterial(mesh_render_material);
 }
+
+void RenderSystem::SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material)
+{
+    m_view_window->SetSkyboxRenderMaterial(skybox_render_material);
+}
 } // namespace Aurora

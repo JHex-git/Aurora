@@ -6,7 +6,6 @@
 // Aurora include
 #include "Core/Render/Pass/MeshOutlinePass.h"
 #include "Utility/FileSystem.h"
-#include "glWrapper/Shader.h"
 #include "Runtime/Scene/Camera.h"
 
 namespace Aurora

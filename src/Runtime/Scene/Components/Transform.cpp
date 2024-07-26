@@ -3,7 +3,7 @@
 // thirdparty include
 
 // Aurora include
-#include "Runtime/Scene/Transform.h"
+#include "Runtime/Scene/Components/Transform.h"
 
 namespace Aurora
 {

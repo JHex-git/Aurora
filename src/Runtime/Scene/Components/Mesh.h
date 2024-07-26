@@ -5,22 +5,22 @@
 #include "thirdparty/opengl/glm/glm/glm.hpp"
 #include "thirdparty/assimp/include/assimp/scene.h"
 // Aurora include
-#include "Runtime/Scene/TextureInfo.h"
-#include "Runtime/Scene/Component.h"
-#include "Runtime/Scene/Submesh.h"
+#include "Runtime/Scene/Components/Component.h"
+#include "Runtime/Scene/Components/Submesh.h"
 #include "Utility/Reflection/ReflectionRegister.h"
 
 namespace Aurora
 {
-class Texture;
 
 class Mesh : public Component
 {
     friend class MeshRenderMaterial;
+    friend class SkyboxRenderMaterial;
     friend class MeshPhongPass;
     friend class MeshOutlinePass;
+    friend class SkyboxPass;
 public:
-    Mesh() : Component() { m_class_name = "Mesh"; }
+    Mesh() : Component("Mesh") { }
     ~Mesh() = default;
 
     bool Load(const std::string& file_path);
@@ -30,18 +30,22 @@ public:
 
     void Update() override;
 
+    // Note: Make sure the texture exists before calling this function, otherwise it will crash.
+    SurfaceTexture& GetTexture(TextureID id);
+
 private:
     void ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
-    SubMesh ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform) const;
-    std::vector<TextureInfo> LoadMaterialTextures(aiMaterial* material, aiTextureType type, const std::string& base_path) const;
+    SubMesh ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
+    std::vector<TextureID> LoadMaterialTextures(aiMaterial* material, aiTextureType type, const std::string& base_path);
     std::string ConvertaiTextureTypeToString(aiTextureType type) const;
 
 private:
     std::vector<SubMesh> m_submeshes;
+    std::unordered_map<std::string, TextureID> m_texturePath_to_id;
+    std::unordered_map<TextureID, SurfaceTexture> m_loaded_textures;
 
     REFLECTABLE_DECLARE(Mesh, m_path)
     std::string m_path;
-    
 };
 
 } // namespace Aurora
