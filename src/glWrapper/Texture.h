@@ -101,7 +101,7 @@ public:
         return *this;
     }
 
-    std::optional<Texture> MakeTexture2D(GLsizei width, GLsizei height);
+    std::optional<Texture> MakeTexture2D(GLsizei width, GLsizei height, GLint format, GLenum type);
     std::optional<Texture> MakeTexture2D(const std::string& path);
 
     std::optional<Texture> MakeTextureCubeMap(const std::array<std::string, 6>& paths);

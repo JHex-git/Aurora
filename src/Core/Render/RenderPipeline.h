@@ -17,7 +17,9 @@ class RenderPipeline
 public:
     RenderPipeline(std::array<int, 2> render_size = {1920, 1080}) : 
         m_render_size(render_size), 
-        m_fbo(FrameBufferObjectBuilder(m_render_size[0], m_render_size[1]).AddColorAttachment(GL_RGBA).EnableDepthAttachment().Create().value())
+        m_fbo(FrameBufferObjectBuilder(m_render_size[0], m_render_size[1]).AddColorAttachment(GL_RGBA)
+                                                                          .EnableDepthStencilAttachment()
+                                                                          .Create().value())
     { }
     ~RenderPipeline() = default;
 

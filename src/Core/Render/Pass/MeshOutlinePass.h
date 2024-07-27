@@ -23,7 +23,8 @@ public:
     void SetMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material) { m_selected_mesh_render_material = mesh_render_material; }
 
 private:
-    std::unique_ptr<ShaderProgram> m_shader_program;
+    std::unique_ptr<ShaderProgram> m_mesh_stencil_shader_program;
+    std::unique_ptr<ShaderProgram> m_outline_shader_program;
     std::shared_ptr<MeshRenderMaterial> m_selected_mesh_render_material;
 };
 } // namespace Aurora

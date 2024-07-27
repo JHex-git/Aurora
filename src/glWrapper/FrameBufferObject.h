@@ -24,14 +24,12 @@ public:
     FrameBufferObjectBuilder& operator=(FrameBufferObjectBuilder&&) = delete;
 
     FrameBufferObjectBuilder& AddColorAttachment(GLint internal_format = GL_RGB);
-    FrameBufferObjectBuilder& EnableDepthAttachment();
-    FrameBufferObjectBuilder& EnableStencilAttachment();
+    FrameBufferObjectBuilder& EnableDepthStencilAttachment();
 
     std::optional<FrameBufferObject> Create();
 
 private:
-    bool m_is_depth_enabled = false;
-    bool m_is_stencil_enabled = false;
+    bool m_is_depth_stencil_enabled = false;
 
     GLsizei m_width;
     GLsizei m_height;
@@ -55,15 +53,13 @@ public:
 
     unsigned int GetColorAttachmentNumber() const { return m_color_attachments.size(); }
     int GetColorAttachmentID(size_t index) const { return index < m_color_attachments.size() ? m_color_attachments[index].GetID() : -1; }
-    int GetDepthAttachmentID() const { return m_depth_attachment.has_value() ? m_depth_attachment.value().GetID() : -1; }
-    int GetStencilAttachmentID() const { return m_stencil_attachment.has_value() ? m_stencil_attachment.value().GetID() : -1; }
+    int GetDepthStencilAttachmentID() const { return m_depth_stencil_attachment.has_value() ? m_depth_stencil_attachment.value().GetID() : -1; }
 
 private:
     FrameBufferObject();
 
     unsigned int m_fboID;
     std::vector<Texture>    m_color_attachments;
-    std::optional<Texture>  m_depth_attachment;
-    std::optional<Texture>  m_stencil_attachment;
+    std::optional<Texture>  m_depth_stencil_attachment;
 };
 } // namespace Aurora

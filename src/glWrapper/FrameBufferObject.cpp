@@ -17,15 +17,9 @@ FrameBufferObjectBuilder& FrameBufferObjectBuilder::AddColorAttachment(GLint int
     return *this;
 }
 
-FrameBufferObjectBuilder& FrameBufferObjectBuilder::EnableDepthAttachment()
+FrameBufferObjectBuilder& FrameBufferObjectBuilder::EnableDepthStencilAttachment()
 {
-    m_is_depth_enabled = true;
-    return *this;
-}
-
-FrameBufferObjectBuilder& FrameBufferObjectBuilder::EnableStencilAttachment()
-{
-    m_is_stencil_enabled = true;
+    m_is_depth_stencil_enabled = true;
     return *this;
 }
 
@@ -38,7 +32,7 @@ std::optional<FrameBufferObject> FrameBufferObjectBuilder::Create()
     // Create color attachments
     for (size_t i = 0; i < m_color_internal_formats.size(); ++i)
     {
-        auto color_attachment = TextureBuilder().WithInternalFormat(m_color_internal_formats[i]).MakeTexture2D(m_width, m_height);
+        auto color_attachment = TextureBuilder().WithInternalFormat(m_color_internal_formats[i]).MakeTexture2D(m_width, m_height, m_color_internal_formats[i], GL_UNSIGNED_BYTE);
         if (color_attachment)
         {
             color_attachment->Bind();
@@ -52,37 +46,20 @@ std::optional<FrameBufferObject> FrameBufferObjectBuilder::Create()
         }
     }
 
-    // Create depth attachment
-    if (m_is_depth_enabled)
+    // Create DepthStencil attachment
+    if (m_is_depth_stencil_enabled)
     {
-        auto depth_attachment = TextureBuilder().WithInternalFormat(GL_DEPTH_COMPONENT).MakeTexture2D(m_width, m_height);
-        if (depth_attachment)
+        auto depth_stencil_attachment = TextureBuilder().WithInternalFormat(GL_DEPTH_STENCIL).MakeTexture2D(m_width, m_height, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8);
+        if (depth_stencil_attachment)
         {
-            depth_attachment->Bind();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_attachment->GetID(), 0);
-            fbo.m_depth_attachment = std::move(*depth_attachment);
+            depth_stencil_attachment->Bind();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth_stencil_attachment->GetID(), 0);
+            fbo.m_depth_stencil_attachment = std::move(*depth_stencil_attachment);
         }
         else
         {
-            spdlog::error("Failed to create depth attachment");
+            spdlog::error("Failed to create DepthStencil attachment");
             return std::nullopt;   
-        }
-    }
-
-    // Create stencil attachment
-    if (m_is_stencil_enabled)
-    {
-        auto stencil_attachment = TextureBuilder().WithInternalFormat(GL_STENCIL_INDEX).MakeTexture2D(m_width, m_height);
-        if (stencil_attachment)
-        {
-            stencil_attachment->Bind();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, stencil_attachment->GetID(), 0);
-            fbo.m_stencil_attachment = std::move(*stencil_attachment);
-        }
-        else
-        {
-            spdlog::error("Failed to create stencil attachment");
-            return std::nullopt;
         }
     }
 
@@ -112,8 +89,7 @@ FrameBufferObject::FrameBufferObject(FrameBufferObject&& other) noexcept
 {
     m_fboID = other.m_fboID;
     m_color_attachments = std::move(other.m_color_attachments);
-    m_depth_attachment = std::move(other.m_depth_attachment);
-    m_stencil_attachment = std::move(other.m_stencil_attachment);
+    m_depth_stencil_attachment = std::move(other.m_depth_stencil_attachment);
     other.m_fboID = 0;
 }
 
@@ -124,8 +100,7 @@ FrameBufferObject& FrameBufferObject::operator=(FrameBufferObject&& other) noexc
         glDeleteFramebuffers(1, &m_fboID);
         m_fboID = other.m_fboID;
         m_color_attachments = std::move(other.m_color_attachments);
-        m_depth_attachment = std::move(other.m_depth_attachment);
-        m_stencil_attachment = std::move(other.m_stencil_attachment);
+        m_depth_stencil_attachment = std::move(other.m_depth_stencil_attachment);
         other.m_fboID = 0;
     }
     return *this;

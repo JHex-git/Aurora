@@ -9,11 +9,11 @@
 
 namespace Aurora
 {
-std::optional<Texture> TextureBuilder::MakeTexture2D(GLsizei width, GLsizei height)
+std::optional<Texture> TextureBuilder::MakeTexture2D(GLsizei width, GLsizei height, GLint format, GLenum type)
 {
     Texture texture(Texture::TextureType::Texture2D);
     texture.Bind();
-    glTexImage2D(GL_TEXTURE_2D, 0, m_internal_format, width, height, 0, m_internal_format, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, m_internal_format, width, height, 0, format, type, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(m_mag_filter));
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(m_wrap_s));

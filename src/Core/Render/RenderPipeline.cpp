@@ -22,7 +22,14 @@ void RenderPipeline::Render()
 {
     m_fbo.Bind();
     glViewport(0, 0, m_render_size[0], m_render_size[1]);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    m_mesh_phong_pass->Render(m_render_size);
+
+    m_skybox_pass->Render(m_render_size);
+
+    // Outline should be rendered after all to ensure not be occluded
+    // Use stencil buffer to avoid covering the selected mesh
     auto selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
     if (selected_scene_object != nullptr)
     {
@@ -33,8 +40,6 @@ void RenderPipeline::Render()
             m_mesh_outline_pass->Render(m_render_size);
         }
     }
-    m_mesh_phong_pass->Render(m_render_size);
-    m_skybox_pass->Render(m_render_size);
     m_fbo.Unbind();
 }
 
