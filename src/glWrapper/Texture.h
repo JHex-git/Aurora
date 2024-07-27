@@ -44,6 +44,21 @@ public:
         NegZ = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
     };
 
+    TextureBuilder() = default;
+    ~TextureBuilder() = default;
+
+    TextureBuilder(const TextureBuilder&) = delete;
+    TextureBuilder& operator=(const TextureBuilder&) = delete;
+
+    TextureBuilder(TextureBuilder&&) = delete;
+    TextureBuilder& operator=(TextureBuilder&&) = delete;
+
+    TextureBuilder& WithInternalFormat(GLint internal_format)
+    {
+        m_internal_format = internal_format;
+        return *this;
+    }
+
     TextureBuilder& WithWrapS(WrapType wrap_s)
     {
         m_wrap_s = wrap_s;
@@ -86,6 +101,7 @@ public:
         return *this;
     }
 
+    std::optional<Texture> MakeTexture2D(GLsizei width, GLsizei height);
     std::optional<Texture> MakeTexture2D(const std::string& path);
 
     std::optional<Texture> MakeTextureCubeMap(const std::array<std::string, 6>& paths);
@@ -98,6 +114,7 @@ private:
     FilterType m_mag_filter = FilterType::Linear;
     bool m_gen_mipmap = false;
     bool m_require_high_precision = false;
+    GLint m_internal_format = GL_RGB;
 };
 
 class Texture

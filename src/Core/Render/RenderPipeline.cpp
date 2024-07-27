@@ -18,8 +18,11 @@ bool RenderPipeline::Init()
     return m_mesh_phong_pass->Init() && m_mesh_outline_pass->Init() && m_skybox_pass->Init();
 }
 
-void RenderPipeline::Render(const std::array<int, 2>& viewport_size)
+void RenderPipeline::Render()
 {
+    m_fbo.Bind();
+    glViewport(0, 0, m_render_size[0], m_render_size[1]);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     auto selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
     if (selected_scene_object != nullptr)
     {
@@ -27,11 +30,12 @@ void RenderPipeline::Render(const std::array<int, 2>& viewport_size)
         if (selected_mesh_renderer != nullptr)
         {
             m_mesh_outline_pass->SetMeshRenderMaterial(selected_mesh_renderer->GetRenderMaterial());
-            m_mesh_outline_pass->Render(viewport_size);
+            m_mesh_outline_pass->Render(m_render_size);
         }
     }
-    m_mesh_phong_pass->Render(viewport_size);
-    m_skybox_pass->Render(viewport_size);
+    m_mesh_phong_pass->Render(m_render_size);
+    m_skybox_pass->Render(m_render_size);
+    m_fbo.Unbind();
 }
 
 void RenderPipeline::AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material)

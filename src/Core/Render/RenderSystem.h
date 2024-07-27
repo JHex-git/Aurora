@@ -36,6 +36,8 @@ public:
     void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material);
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material);
 
+    int GetRenderTargetID() const { return m_view_window->GetRenderTargetID(); }
+
 private:
     RenderSystem() = default;
 

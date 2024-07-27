@@ -232,12 +232,11 @@ void EditorUI::ShowViewPanel()
     float fps = 1.0f / delta_time;
     ImGui::Text("FPS: %.1f", fps);
     ImGuiViewport* viewport = ImGui::GetMainViewport();
-    auto view_pos = ImGui::GetWindowPos();
-    auto view_size = ImGui::GetWindowSize();
-    view_pos.y = viewport->Size.y - view_pos.y - view_size.y; // ImGui window pos is from top-left, but OpenGL viewport is from bottom-left
-    view_size.y = ImGui::GetContentRegionAvail().y;
+    auto view_pos = ImGui::GetCursorScreenPos(); // left top corner
+    auto view_size = ImGui::GetContentRegionAvail();
     RenderSystem::GetInstance().UpdateViewInfo(ViewInfo{ {static_cast<int>(view_size.x), static_cast<int>(view_size.y)}, 
                                            {static_cast<int>(view_pos.x), static_cast<int>(view_pos.y)} });
+    ImGui::Image((void*)(intptr_t)RenderSystem::GetInstance().GetRenderTargetID(), ImVec2(view_size.x, view_size.y), ImVec2(0, 1), ImVec2(1, 0));
     ImGui::End();
 }
 

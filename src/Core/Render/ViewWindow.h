@@ -31,6 +31,8 @@ public:
     void UpdateViewInfo(ViewInfo&& view_info) { m_view_info = std::move(view_info); }
     std::array<int, 2> GetSize() const { return m_view_info.size; }
 
+    int GetRenderTargetID() const { return m_render_pipeline->GetRenderTargetID(); }
+
 private:
     void OnMousePosCallback(double xpos, double ypos);
     void OnMouseButtonCallback(int button, int action, int mods);
