@@ -12,6 +12,7 @@
 #include "glWrapper/Texture.h"
 #include "ExternalHelper/AssimpHelper.h"
 #include "Utility/FileSystem.h"
+#include "Runtime/Scene/TextureManager.h"
 
 namespace Aurora
 {
@@ -29,10 +30,6 @@ void Mesh::Deserialize(const tinyxml2::XMLElement* node, std::shared_ptr<SceneOb
     Load(node->Attribute("Path"));
 }
 
-SurfaceTexture& Mesh::GetTexture(TextureID id)
-{
-    return m_loaded_textures.find(id)->second;
-}
 void Mesh::Update()
 {
 }
@@ -112,6 +109,10 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
         // diffuse maps
         std::vector<TextureID> albedoMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, base_path_str);
+        if (albedoMaps.empty())
+        {
+            albedoMaps = {TextureManager::GetInstance().GetDummyWhiteTexture().texture.GetID()}; // Default white texture.
+        }
         textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
         // specular maps
         std::vector<TextureID> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, base_path_str);
@@ -159,7 +160,7 @@ std::vector<TextureID> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextur
         {
             m_texturePath_to_id.insert({full_path, texture->GetID()});
             texture_ids.push_back(texture->GetID());
-            m_loaded_textures.insert({texture->GetID(), SurfaceTexture(std::move(*texture), std::move(type_str))});
+            TextureManager::GetInstance().m_surface_textures.insert({texture->GetID(), SurfaceTexture(std::move(*texture), std::move(type_str))});
         }
     }
     return texture_ids;

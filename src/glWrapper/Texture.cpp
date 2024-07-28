@@ -9,6 +9,7 @@
 
 namespace Aurora
 {
+
 std::optional<Texture> TextureBuilder::MakeTexture2D(GLsizei width, GLsizei height, GLint format, GLenum type)
 {
     Texture texture(Texture::TextureType::Texture2D);

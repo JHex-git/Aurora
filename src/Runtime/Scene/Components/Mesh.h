@@ -30,9 +30,6 @@ public:
 
     void Update() override;
 
-    // Note: Make sure the texture exists before calling this function, otherwise it will crash.
-    SurfaceTexture& GetTexture(TextureID id);
-
 private:
     void ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
     SubMesh ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
@@ -42,7 +39,6 @@ private:
 private:
     std::vector<SubMesh> m_submeshes;
     std::unordered_map<std::string, TextureID> m_texturePath_to_id;
-    std::unordered_map<TextureID, SurfaceTexture> m_loaded_textures;
 
     REFLECTABLE_DECLARE(Mesh, m_path)
     std::string m_path;

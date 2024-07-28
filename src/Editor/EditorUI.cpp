@@ -101,6 +101,20 @@ void EditorUI::ShowMainPanel()
                 // TODO:
             }
 
+            if (ImGui::BeginMenu("Load Mesh"))
+            {
+                if (ImGui::MenuItem("Sphere"))
+                {
+                    SceneManager::GetInstance().LoadMesh("assets/models/sphere.obj");
+                }
+                if (ImGui::MenuItem("Cube"))
+                {
+                    SceneManager::GetInstance().LoadMesh("assets/models/cube.obj");
+                }
+
+                ImGui::EndMenu();
+            }
+
             if (ImGui::MenuItem("Add Skybox"))
             {
                 m_show_skybox_dialog = true;
@@ -323,7 +337,6 @@ void EditorUI::ShowSkyboxDialog()
 {
     if (m_show_skybox_dialog)
     {
-        // TODO:
         static char right[256] = "assets/textures/skybox/right.jpg";
         static char left[256] = "assets/textures/skybox/left.jpg";
         static char top[256] = "assets/textures/skybox/top.jpg";

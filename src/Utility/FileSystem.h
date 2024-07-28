@@ -29,5 +29,11 @@ public:
         std::filesystem::path file_path_fs(file_path);
         return file_path_fs.filename().string();
     }
+
+    static std::string GetFileNameWithoutExtension(const std::string& file_path)
+    {
+        std::filesystem::path file_path_fs(file_path);
+        return file_path_fs.stem().string();
+    }
 };
 } // namespace Aurora

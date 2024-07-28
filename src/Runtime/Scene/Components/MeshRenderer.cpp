@@ -67,13 +67,15 @@ void MeshRenderer::Update()
 {
 }
 
-void MeshRenderer::LoadMesh(const std::string& path)
+bool MeshRenderer::LoadMesh(const std::string& path)
 {
     m_mesh = std::make_shared<Mesh>();
     m_mesh->Init(m_scene_object.lock());
-    m_mesh->Load(path);
+    auto is_mesh_loaded = m_mesh->Load(path);
 
     m_material = std::make_shared<MeshRenderMaterial>(m_mesh);
-    m_material->Init(m_scene_object.lock());
+    auto is_material_initialized = m_material->Init(m_scene_object.lock());
+
+    return is_mesh_loaded && is_material_initialized;
 }
 } // namespace Aurora

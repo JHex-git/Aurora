@@ -21,7 +21,7 @@ public:
 
     void Update() override;
 
-    void LoadMesh(const std::string& path);
+    bool LoadMesh(const std::string& path);
 
     inline std::shared_ptr<MeshRenderMaterial> GetRenderMaterial() const { return m_material; }
 

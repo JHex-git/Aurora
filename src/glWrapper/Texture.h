@@ -119,6 +119,8 @@ private:
 
 class Texture
 {
+    friend class TextureBuilder;
+    friend class TextureManager;
 public:
     enum class TextureType : GLenum
     {
@@ -140,7 +142,6 @@ public:
     unsigned int GetID() const { return m_textureID; }
 
 private:
-    friend class TextureBuilder;
     Texture(TextureType texture_type);
     
     TextureType m_type;

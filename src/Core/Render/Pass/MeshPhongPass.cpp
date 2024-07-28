@@ -9,6 +9,7 @@
 #include "glWrapper/Shader.h"
 #include "Runtime/Scene/Camera.h"
 #include "Runtime/Scene/LightManager.h"
+#include "Runtime/Scene/TextureManager.h"
 
 namespace Aurora
 {
@@ -61,7 +62,7 @@ void MeshPhongPass::Render(const std::array<int, 2>& viewport_size)
                 material->m_ebos[i]->Bind();
                 for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
                 {
-                    auto& surface_texture = material->m_mesh->GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
+                    auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
                     // reserve unit 0 for temporary use
                     surface_texture.texture.Bind(j + 1);
                     m_shader_program->SetUniform(std::string("uTex") + surface_texture.type, j + 1);

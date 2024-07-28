@@ -8,8 +8,7 @@
 #include "Runtime/Scene/Components/Mesh.h"
 #include "Core/Render/Material/MeshRenderMaterial.h"
 #include "Utility/FileSystem.h"
-#include "Runtime/Scene/Components/MeshRenderer.h"
-#include "Runtime/Scene/Components/SkyboxRenderer.h"
+#include "Runtime/Scene/SceneObjects/SceneObjectFactory.h"
 
 namespace Aurora
 {
@@ -28,27 +27,13 @@ Scene::Scene(const std::string& scene_path)
 
 void Scene::LoadMesh(std::string file_path)
 {
-    auto scene_object = std::make_shared<SceneObject>();
-
-    auto mesh_renderer = std::make_shared<MeshRenderer>();
-    mesh_renderer->Init(scene_object);
-    mesh_renderer->LoadMesh(file_path);
-
-    scene_object->AddComponent(mesh_renderer);
-    m_scene_objects.push_back(std::move(scene_object));
+    m_scene_objects.push_back(SceneObjectFactory::CreateMesh(file_path));
     m_is_dirty = true;
 }
 
 void Scene::AddSkybox(std::array<std::string, 6>&& skybox_paths)
 {
-    auto scene_object = std::make_shared<SceneObject>("Skybox");
-    
-    auto skybox_renderer = std::make_shared<SkyboxRenderer>();
-    skybox_renderer->Init(scene_object);
-    skybox_renderer->Load(std::move(skybox_paths));
-
-    scene_object->AddComponent(skybox_renderer);
-    m_scene_objects.push_back(std::move(scene_object));
+    m_scene_objects.push_back(SceneObjectFactory::CreateSkybox(std::move(skybox_paths)));
     m_is_dirty = true;
 }
 
