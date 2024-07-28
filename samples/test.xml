@@ -67,4 +67,22 @@
             <Color r="1" g="1" b="1"/>
         </LightComponent>
     </SceneObject>
+    <SceneObject Name="Skybox">
+        <Transform>
+            <Position X="0" Y="0" Z="0"/>
+            <Rotation X="0" Y="0" Z="1" W="0"/>
+            <Scale X="1" Y="1" Z="1"/>
+        </Transform>
+        <SkyboxRendererComponent>
+            <Mesh Path="assets/models/sphere.obj"/>
+            <Material Type="Skybox">
+                <Path>assets/textures/skybox/right.jpg</Path>
+                <Path>assets/textures/skybox/left.jpg</Path>
+                <Path>assets/textures/skybox/top.jpg</Path>
+                <Path>assets/textures/skybox/bottom.jpg</Path>
+                <Path>assets/textures/skybox/front.jpg</Path>
+                <Path>assets/textures/skybox/back.jpg</Path>
+            </Material>
+        </SkyboxRendererComponent>
+    </SceneObject>
 </Scene>

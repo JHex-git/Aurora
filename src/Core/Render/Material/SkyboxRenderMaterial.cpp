@@ -41,7 +41,9 @@ void SkyboxRenderMaterial::Deserialize(const tinyxml2::XMLElement *node, std::sh
             return;
         }
     }
-    Load(std::move(m_cubemap_paths));
+
+    auto cubemap_path = m_cubemap_paths;
+    Load(std::move(cubemap_path));
 }
 
 bool SkyboxRenderMaterial::Init(std::shared_ptr<SceneObject> owner)
