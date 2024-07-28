@@ -45,31 +45,34 @@ void MeshPhongPass::Render(const std::array<int, 2>& viewport_size)
     {
         glEnable(GL_DEPTH_TEST);
         m_shader_program->Bind();
-        for (auto& material : m_mesh_render_materials)
+        const auto& lights = LightManager::GetInstance().GetActiveLights();
+        for (auto light : lights)
         {
-            // render the loaded model
-            const glm::mat4 model = material->GetModelMatrix();
-            m_shader_program->SetUniform("uModel", model);
-            m_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
-            m_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
-            m_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
-            const auto& light = LightManager::GetInstance().GetLight(MainCamera::GetInstance().GetPosition());
-            m_shader_program->SetUniform("uLightPos", light.GetPosition());
-            m_shader_program->SetUniform("uLightColor", light.GetColor());
-            for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
+            for (auto& material : m_mesh_render_materials)
             {
-                material->m_vbos[i]->Bind();
-                material->m_ebos[i]->Bind();
-                for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
+                // render the loaded model
+                const glm::mat4 model = material->GetModelMatrix();
+                m_shader_program->SetUniform("uModel", model);
+                m_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
+                m_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
+                m_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
+                m_shader_program->SetUniform("uLightPos", light->GetPosition());
+                m_shader_program->SetUniform("uLightColor", light->GetColor());
+                for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
                 {
-                    auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
-                    // reserve unit 0 for temporary use
-                    surface_texture.texture.Bind(j + 1);
-                    m_shader_program->SetUniform(std::string("uTex") + surface_texture.type, j + 1);
+                    material->m_vbos[i]->Bind();
+                    material->m_ebos[i]->Bind();
+                    for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
+                    {
+                        auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
+                        // reserve unit 0 for temporary use
+                        surface_texture.texture.Bind(j + 1);
+                        m_shader_program->SetUniform(std::string("uTex") + surface_texture.type, j + 1);
+                    }
+                    glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
+                    material->m_ebos[i]->Unbind();
+                    material->m_vbos[i]->Unbind();
                 }
-                glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-                material->m_ebos[i]->Unbind();
-                material->m_vbos[i]->Unbind();
             }
         }
         m_shader_program->Unbind();

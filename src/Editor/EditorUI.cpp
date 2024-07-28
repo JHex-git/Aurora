@@ -101,6 +101,11 @@ void EditorUI::ShowMainPanel()
                 // TODO:
             }
 
+            if (ImGui::MenuItem("New Light"))
+            {
+                SceneManager::GetInstance().GetScene()->AddLight();
+            }
+
             if (ImGui::BeginMenu("Load Mesh"))
             {
                 if (ImGui::MenuItem("Sphere"))

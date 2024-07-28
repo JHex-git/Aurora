@@ -26,6 +26,7 @@ public:
     void Update();
     void LoadMesh(std::string file_path);
     void AddSkybox(std::array<std::string, 6>&& skybox_paths);
+    void AddLight();
 
     void SetSelectedSceneObject(std::shared_ptr<SceneObject> scene_object) { m_selected_scene_object = scene_object; }
     void SetDirty() { m_is_dirty = true; }

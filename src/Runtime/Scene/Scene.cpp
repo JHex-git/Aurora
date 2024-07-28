@@ -9,6 +9,8 @@
 #include "Core/Render/Material/MeshRenderMaterial.h"
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/SceneObjects/SceneObjectFactory.h"
+#include "Runtime/Scene/LightManager.h"
+#include "Runtime/Scene/Camera.h"
 
 namespace Aurora
 {
@@ -37,12 +39,19 @@ void Scene::AddSkybox(std::array<std::string, 6>&& skybox_paths)
     m_is_dirty = true;
 }
 
+void Scene::AddLight()
+{
+    m_scene_objects.push_back(SceneObjectFactory::CreateLight());
+    m_is_dirty = true;
+}
+
 void Scene::Update()
 {
     for (auto& scene_object : m_scene_objects)
     {
         scene_object->Update();
     }
+    LightManager::GetInstance().UpdateActiveLights(MainCamera::GetInstance().GetPosition());
 }
 
 void Scene::Serialize(tinyxml2::XMLElement *node)

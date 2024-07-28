@@ -6,6 +6,7 @@
 #include "Runtime/Scene/SceneObjects/SceneObject.h"
 #include "Runtime/Scene/Components/MeshRenderer.h"
 #include "Runtime/Scene/Components/SkyboxRenderer.h"
+#include "Runtime/Scene/Components/Light.h"
 
 namespace Aurora
 {
@@ -71,6 +72,7 @@ void SceneObject::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<
                 // TODO: Add Component here
                 if (!strcmp(p_child->Name(), "MeshRendererComponent")) component_ptr = std::make_shared<MeshRenderer>();
                 else if (!strcmp(p_child->Name(), "SkyboxRendererComponent")) component_ptr = std::make_shared<SkyboxRenderer>();
+                else if (!strcmp(p_child->Name(), "LightComponent")) component_ptr = std::make_shared<Light>();
                 else
                 {
                     spdlog::error("Unknown component {}.", p_child->Name());

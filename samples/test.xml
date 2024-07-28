@@ -1,8 +1,8 @@
 <Scene Name="test1">
     <SceneObject Name="object1">
         <Transform>
-            <Position X="0" Y="0" Z="0"/>
-            <Rotation X="0" Y="0" Z="0" W="1"/>
+            <Position X="1.1" Y="0" Z="0"/>
+            <Rotation X="0.0034462342" Y="0.00055508333" Z="0.15901868" W="0.9872694"/>
             <Scale X="1" Y="1" Z="1"/>
         </Transform>
         <MeshRendererComponent>
@@ -23,5 +23,48 @@
             <Rotation X="0" Y="0" Z="0" W="1"/>
             <Scale X="1" Y="1" Z="1"/>
         </Transform>
+    </SceneObject>
+    <SceneObject Name="sphere">
+        <Transform>
+            <Position X="-2.0999999" Y="-0.1" Z="-5.8000002"/>
+            <Rotation X="-1.9107181e-15" Y="4.3712134e-08" Z="1" W="-4.3711388e-08"/>
+            <Scale X="1" Y="1" Z="1"/>
+        </Transform>
+        <MeshRendererComponent>
+            <Mesh Path="assets/models/sphere.obj"/>
+            <Material Type="Default"/>
+        </MeshRendererComponent>
+    </SceneObject>
+    <SceneObject Name="cube">
+        <Transform>
+            <Position X="-6.5999999" Y="-0.89999998" Z="0"/>
+            <Rotation X="0" Y="0" Z="1" W="0"/>
+            <Scale X="1" Y="1" Z="1"/>
+        </Transform>
+        <MeshRendererComponent>
+            <Mesh Path="assets/models/cube.obj"/>
+            <Material Type="Default"/>
+        </MeshRendererComponent>
+    </SceneObject>
+    <SceneObject Name="cube">
+        <Transform>
+            <Position X="-2.4000001" Y="0" Z="0"/>
+            <Rotation X="0" Y="0" Z="1" W="0"/>
+            <Scale X="1" Y="1" Z="1"/>
+        </Transform>
+        <MeshRendererComponent>
+            <Mesh Path="assets/models/cube.obj"/>
+            <Material Type="Default"/>
+        </MeshRendererComponent>
+    </SceneObject>
+    <SceneObject Name="Light">
+        <Transform>
+            <Position X="-0.1" Y="0" Z="0"/>
+            <Rotation X="0" Y="0" Z="1" W="0"/>
+            <Scale X="1" Y="1" Z="1"/>
+        </Transform>
+        <LightComponent>
+            <Color r="1" g="1" b="1"/>
+        </LightComponent>
     </SceneObject>
 </Scene>

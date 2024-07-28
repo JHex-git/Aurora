@@ -8,18 +8,26 @@
 namespace Aurora
 {
 
-void LightManager::AddLight(Light&& light)
+LightID LightManager::RegisterLight(std::shared_ptr<Light> light)
 {
-    m_lights.push_back(std::move(light));
+    static LightID light_id = 1;
+    m_lights.emplace(light_id, light);
+    return light_id++;
 }
 
-void LightManager::RemoveLight()
+void LightManager::UnregisterLight(LightID lightID)
 {
+    m_lights.erase(lightID);
 }
 
-const Light& LightManager::GetLight(const glm::vec3& viewPos)
+void LightManager::UpdateActiveLights(const glm::vec3& viewPos)
 {
     // TODO:
-    return m_lights[0];
+    m_active_lights.clear();
+    for (const auto& light : m_lights)
+    {
+        m_active_lights.push_back(light.second);
+    }
 }
+
 } // namespace Aurora

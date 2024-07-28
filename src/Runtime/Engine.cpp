@@ -38,7 +38,6 @@ bool Engine::Init()
     spdlog::info("Editor UI Initialized");
 
     SceneManager::GetInstance().LoadScene(FileSystem::GetFullPath("samples\\test.xml"));
-    LightManager::GetInstance().AddLight(Light{glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f)});
     return true;
 }
 

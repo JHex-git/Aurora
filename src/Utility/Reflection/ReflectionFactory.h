@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <map>
 #include <functional>
+#include <string>
 // thirdparty include
 
 // Aurora include
