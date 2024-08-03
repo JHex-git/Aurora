@@ -12,6 +12,7 @@
 #include "Editor/EditorUI.h"
 #include "Core/Render/RenderSystem.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "Utility/FileSystem.h"
 
 namespace Aurora
 {
@@ -19,6 +20,7 @@ bool EditorUI::Init()
 {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.Fonts->AddFontFromFileTTF(FileSystem::GetFullPath("assets/fonts/Microsoft Yahei.ttf").c_str(), 17.0f);
 
     return true;
 }
