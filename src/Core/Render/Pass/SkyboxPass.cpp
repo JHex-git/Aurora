@@ -50,6 +50,8 @@ void SkyboxPass::Render(const std::array<int, 2>& viewport_size)
         m_shader_program->SetUniform("uMVP", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix() * model);
         for (size_t i = 0; i < m_skybox_render_material->m_mesh->m_submeshes.size(); ++i)
         {
+            m_skybox_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
+            
             m_skybox_render_material->m_vbos[i]->Bind();
             m_skybox_render_material->m_ebos[i]->Bind();
             m_skybox_render_material->GetCubemapTexture()->Bind();

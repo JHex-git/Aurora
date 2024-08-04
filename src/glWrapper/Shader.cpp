@@ -33,7 +33,30 @@ bool Shader::Load(const std::string& shader_path)
     shader_stream << shader_file.rdbuf();
     shader_file.close();
 
+    std::string shader_defines;
+    for (const auto& flag : m_flags)
+    {
+        shader_defines += "#define " + flag + "\n";
+    }
+    for (const auto& option : m_options)
+    {
+        shader_defines += "#define " + option.first + " " + option.second + "\n";
+    }
+
     std::string shader_code = shader_stream.str();
+
+    // add shader defines after #version xxx\n
+    auto version_pos = shader_code.find("#version");
+    if (version_pos != std::string::npos)
+    {
+        auto pos = shader_code.find('\n', version_pos + strlen("#version"));
+        shader_code.insert(pos + 1, shader_defines);
+    }
+    else
+    {
+        shader_code = shader_defines + shader_code;
+    }
+
     const char* shader_code_ptr = shader_code.c_str();
     glShaderSource(m_shaderID, 1, &shader_code_ptr, nullptr);
     glCompileShader(m_shaderID);

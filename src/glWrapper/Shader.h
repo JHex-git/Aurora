@@ -41,6 +41,13 @@ public:
         return *this;
     }
 
+    // This should be called before Load()
+    void SetFlag(std::string&& flag) { m_flags.emplace_back(std::move(flag)); }
+
+    // This should be called before Load()
+    template <typename T>
+    void SetOption(std::string&& key, T&& value) { m_options.emplace(std::move(key), std::to_string(std::forward<T>(value))); }
+
     bool Load(const std::string& shader_path);
 
     GLuint GetShaderID() const { return m_shaderID; }
@@ -49,6 +56,9 @@ public:
 private:
     unsigned int m_shaderID;
     ShaderType m_type;
+
+    std::vector<std::string> m_flags; // On/Off DEFINEs
+    std::unordered_map<std::string, std::string> m_options; // Key-Value DEFINEs
 };
 
 class ShaderProgram

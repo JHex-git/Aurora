@@ -13,7 +13,8 @@ struct Vertex
 {
     glm::vec3 position;
     glm::vec3 normal;
-    glm::vec2 texCoords;
+    glm::vec2 tex_coords;
+    glm::vec4 color;
 };
 
 class SubMesh
@@ -23,15 +24,12 @@ class SubMesh
     friend class MeshPhongPass;
     friend class MeshOutlinePass;
     friend class SkyboxPass;
+    friend class GizmosPass;
 public:
-    SubMesh(std::vector<Vertex>&& vertices, std::vector<unsigned int>&& indices, std::vector<TextureID>&& textures)
-        : m_vertices(std::move(vertices)), m_indices(std::move(indices)), m_textures(std::move(textures)) { }
+    SubMesh(aiColor3D color, std::vector<Vertex>&& vertices, std::vector<unsigned int>&& indices, std::vector<TextureID>&& textures)
+        : m_color(color.r, color.g, color.b), m_vertices(std::move(vertices)), m_indices(std::move(indices)), m_textures(std::move(textures)) { }
 
-    SubMesh(SubMesh&& other)
-        : m_vertices(std::move(other.m_vertices)), m_indices(std::move(other.m_indices)), m_textures(std::move(other.m_textures))
-    {
-        other.m_vertices.clear(); other.m_indices.clear(); other.m_textures.clear();
-    }
+    SubMesh(SubMesh&& other) = default;
 
     ~SubMesh() = default;
 
@@ -39,5 +37,7 @@ private:
     std::vector<Vertex> m_vertices;
     std::vector<unsigned int> m_indices;
     std::vector<TextureID> m_textures;
+
+    glm::vec3 m_color;
 };
 } // namespace Aurora

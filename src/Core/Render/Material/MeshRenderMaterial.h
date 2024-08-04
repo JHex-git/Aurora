@@ -18,6 +18,7 @@ class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from
     friend class MeshPhongPass;
     friend class MeshOutlinePass;
     friend class SkyboxPass;
+    friend class GizmosPass;
     
 public:
     MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : RenderMaterial("MeshRenderMaterial"), m_mesh(mesh) { }

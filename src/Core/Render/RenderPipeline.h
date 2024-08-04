@@ -7,6 +7,7 @@
 #include "Core/Render/Pass/MeshPhongPass.h"
 #include "Core/Render/Pass/MeshOutlinePass.h"
 #include "Core/Render/Pass/SkyboxPass.h"
+#include "Core/Render/Pass/GizmosPass.h"
 #include "glWrapper/FrameBufferObject.h"
 
 namespace Aurora
@@ -35,6 +36,7 @@ private:
     std::unique_ptr<MeshPhongPass> m_mesh_phong_pass;
     std::unique_ptr<MeshOutlinePass> m_mesh_outline_pass;
     std::unique_ptr<SkyboxPass> m_skybox_pass;
+    std::unique_ptr<GizmosPass> m_gizmos_pass;
 
     std::array<int, 2> m_render_size;
     FrameBufferObject m_fbo;

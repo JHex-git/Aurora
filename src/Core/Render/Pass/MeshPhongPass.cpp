@@ -16,24 +16,58 @@ namespace Aurora
 
 bool MeshPhongPass::Init()
 {
-    std::vector<Shader> shaders;
-    shaders.emplace_back(ShaderType::VertexShader);
-    if (!shaders[0].Load(FileSystem::GetFullPath("shaders/mesh.vert")))
+    // shader program with texture
     {
-        spdlog::error("Failed to load vertex shader {}", FileSystem::GetFullPath("shaders/bypass.vert"));
-        return false;
+        std::vector<Shader> shaders;
+        shaders.emplace_back(ShaderType::VertexShader);
+        auto vert_path = FileSystem::GetFullPath("shaders/mesh.vert");
+        shaders[0].SetFlag("ENABLE_NORMALS");
+        shaders[0].SetFlag("ENABLE_TEXCOORDS");
+        if (!shaders[0].Load(vert_path))
+        {
+            spdlog::error("Failed to load vertex shader {}", vert_path);
+            return false;
+        }
+        shaders.emplace_back(ShaderType::FragmentShader);
+        auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
+        shaders[1].SetFlag("ENABLE_TEXCOORDS");
+        if (!shaders[1].Load(frag_path))
+        {
+            spdlog::error("Failed to load fragment shader {}", frag_path);
+            return false;
+        }
+        m_tex_shader_program = std::make_unique<ShaderProgram>();
+        if (!m_tex_shader_program->Load(shaders))
+        {
+            spdlog::error("Failed to load shader program");
+            return false;
+        }
     }
-    shaders.emplace_back(ShaderType::FragmentShader);
-    if (!shaders[1].Load(FileSystem::GetFullPath("shaders/phong.frag")))
+
+    // shader program without texture
     {
-        spdlog::error("Failed to load fragment shader {}", FileSystem::GetFullPath("shaders/phong.frag"));
-        return false;
-    }
-    m_shader_program = std::make_unique<ShaderProgram>();
-    if (!m_shader_program->Load(shaders))
-    {
-        spdlog::error("Failed to load shader program");
-        return false;
+        std::vector<Shader> shaders;
+        shaders.emplace_back(ShaderType::VertexShader);
+        auto vert_path = FileSystem::GetFullPath("shaders/mesh.vert");
+        shaders[0].SetFlag("ENABLE_NORMALS");
+        if (!shaders[0].Load(vert_path))
+        {
+            spdlog::error("Failed to load vertex shader {}", vert_path);
+            return false;
+        }
+        shaders.emplace_back(ShaderType::FragmentShader);
+        auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
+        if (!shaders[1].Load(frag_path))
+        {
+            spdlog::error("Failed to load fragment shader {}", frag_path);
+            return false;
+        }
+        m_no_tex_shader_program = std::make_unique<ShaderProgram>();
+        if (!m_no_tex_shader_program->Load(shaders))
+        {
+            spdlog::error("Failed to load shader program");
+            return false;
+        }
     }
 
     return true;
@@ -41,41 +75,55 @@ bool MeshPhongPass::Init()
 
 void MeshPhongPass::Render(const std::array<int, 2>& viewport_size)
 {
-    if (m_shader_program != nullptr)
+    if (m_tex_shader_program != nullptr && m_no_tex_shader_program != nullptr)
     {
         glEnable(GL_DEPTH_TEST);
-        m_shader_program->Bind();
         const auto& lights = LightManager::GetInstance().GetActiveLights();
         for (auto light : lights)
         {
             for (auto& material : m_mesh_render_materials)
             {
-                // render the loaded model
+                auto shader_program = material->m_mesh->HasTextures() ? m_tex_shader_program.get() : m_no_tex_shader_program.get();
+                shader_program->Bind();
                 const glm::mat4 model = material->GetModelMatrix();
-                m_shader_program->SetUniform("uModel", model);
-                m_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
-                m_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
-                m_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
-                m_shader_program->SetUniform("uLightPos", light->GetPosition());
-                m_shader_program->SetUniform("uLightColor", light->GetColor());
+                shader_program->SetUniform("uModel", model);
+                shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
+                shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
+                shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
+                shader_program->SetUniform("uLightPos", light->GetPosition());
+                shader_program->SetUniform("uLightColor", light->GetColor());
                 for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
                 {
+                    material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
+                    material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
+                    if (material->m_mesh->HasTextures())
+                        material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tex_coords)});
+
                     material->m_vbos[i]->Bind();
                     material->m_ebos[i]->Bind();
-                    for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
+                    if (material->m_mesh->HasTextures())
                     {
-                        auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
-                        // reserve unit 0 for temporary use
-                        surface_texture.texture.Bind(j + 1);
-                        m_shader_program->SetUniform(std::string("uTex") + surface_texture.type, j + 1);
+                        for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
+                        {
+                            auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
+                            // reserve unit 0 for temporary use
+                            surface_texture.texture.Bind(j + 1);
+                            shader_program->SetUniform(std::string("uTex") + surface_texture.type, j + 1);
+                        }
+                    }
+                    else
+                    {
+                        shader_program->SetUniform("uColor", material->m_mesh->m_submeshes[i].m_color);
                     }
                     glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
                     material->m_ebos[i]->Unbind();
                     material->m_vbos[i]->Unbind();
                 }
+                shader_program->Unbind();
             }
         }
-        m_shader_program->Unbind();
     }
+
+
 }
 } // namespace Aurora

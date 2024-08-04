@@ -11,6 +11,7 @@
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/LightManager.h"
 #include "Core/Render/RenderSystem.h"
+#include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
 {
@@ -35,9 +36,6 @@ bool MeshRenderMaterial::Init(std::shared_ptr<SceneObject> owner)
     {
         m_vbos[i] = std::make_shared<VertexBuffer>();
         m_vbos[i]->LoadData(m_mesh->m_submeshes[i].m_vertices, m_mesh->m_submeshes[i].m_vertices.size());
-        m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-        m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
-        m_vbos[i]->SetAttribPointer(VertexAttribPointer{2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, texCoords)});
     }
     
     m_ebos.resize(m_mesh->m_submeshes.size());
@@ -47,7 +45,9 @@ bool MeshRenderMaterial::Init(std::shared_ptr<SceneObject> owner)
         m_ebos[i]->LoadData(m_mesh->m_submeshes[i].m_indices, m_mesh->m_submeshes[i].m_indices.size());
     }
 
-    RenderSystem::GetInstance().AddMeshRenderMaterial(shared_from_this());
+    // render materials that are scene irrelevant should not be registered 
+    if (owner != SceneManager::GetInstance().GetDummySceneObject())
+        RenderSystem::GetInstance().AddMeshRenderMaterial(shared_from_this());
     return true;
 }
 

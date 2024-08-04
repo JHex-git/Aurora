@@ -18,15 +18,18 @@ bool MeshOutlinePass::Init()
     {
         std::vector<Shader> shaders;
         shaders.emplace_back(ShaderType::VertexShader);
-        if (!shaders[0].Load(FileSystem::GetFullPath("shaders/mesh.vert")))
+        auto vert_path = FileSystem::GetFullPath("shaders/mesh.vert");
+        shaders[0].SetFlag("ENABLE_NORMALS");
+        if (!shaders[0].Load(vert_path))
         {
-            spdlog::error("Failed to load vertex shader {}", FileSystem::GetFullPath("shaders/mesh.vert"));
+            spdlog::error("Failed to load vertex shader {}", vert_path);
             return false;
         }
         shaders.emplace_back(ShaderType::FragmentShader);
-        if (!shaders[1].Load(FileSystem::GetFullPath("shaders/mesh_pure.frag")))
+        auto frag_path = FileSystem::GetFullPath("shaders/pure.frag");
+        if (!shaders[1].Load(frag_path))
         {
-            spdlog::error("Failed to load fragment shader {}", FileSystem::GetFullPath("shaders/mesh_pure.frag"));
+            spdlog::error("Failed to load fragment shader {}", frag_path);
             return false;
         }
         m_mesh_stencil_shader_program = std::make_unique<ShaderProgram>();
@@ -40,15 +43,17 @@ bool MeshOutlinePass::Init()
     {
         std::vector<Shader> shaders;
         shaders.emplace_back(ShaderType::VertexShader);
-        if (!shaders[0].Load(FileSystem::GetFullPath("shaders/outline.vert")))
+        auto vert_path = FileSystem::GetFullPath("shaders/outline.vert");
+        if (!shaders[0].Load(vert_path))
         {
-            spdlog::error("Failed to load vertex shader {}", FileSystem::GetFullPath("shaders/outline.vert"));
+            spdlog::error("Failed to load vertex shader {}", vert_path);
             return false;
         }
         shaders.emplace_back(ShaderType::FragmentShader);
-        if (!shaders[1].Load(FileSystem::GetFullPath("shaders/pure.frag")))
+        auto frag_path = FileSystem::GetFullPath("shaders/pure.frag");
+        if (!shaders[1].Load(frag_path))
         {
-            spdlog::error("Failed to load fragment shader {}", FileSystem::GetFullPath("shaders/pure.frag"));
+            spdlog::error("Failed to load fragment shader {}", frag_path);
             return false;
         }
         m_outline_shader_program = std::make_unique<ShaderProgram>();
@@ -111,6 +116,9 @@ void MeshOutlinePass::Render(const std::array<int, 2>& viewport_size)
     m_outline_shader_program->SetUniform("uColor", glm::vec3(1.0f, 1.0f, 1.0f));
     for (size_t i = 0; i < m_selected_mesh_render_material->m_mesh->m_submeshes.size(); ++i)
     {
+        m_selected_mesh_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
+        m_selected_mesh_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
+
         m_selected_mesh_render_material->m_vbos[i]->Bind();
         m_selected_mesh_render_material->m_ebos[i]->Bind();
         glDrawElements(GL_TRIANGLES, m_selected_mesh_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);

@@ -38,10 +38,16 @@ public:
 
     const std::shared_ptr<Scene> GetScene() const { return m_scene; }
 
+    // This is used for scene irrelavant objects, such as gizmos.
+    std::shared_ptr<SceneObject> GetDummySceneObject() const { return m_dummy_scene_object; }
+
 private:
-    SceneManager() = default;
+    SceneManager() { m_dummy_scene_object = std::make_shared<SceneObject>("Dummy Scene Object"); }
 
 private:
     std::shared_ptr<Scene> m_scene;
+
+    // This is used for scene irrelavant objects, such as gizmos.
+    std::shared_ptr<SceneObject> m_dummy_scene_object;
 };
 } // namespace Aurora

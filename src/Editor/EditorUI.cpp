@@ -16,6 +16,18 @@
 
 namespace Aurora
 {
+
+void DrawTextBackground(const std::string& text, const ImVec4& color)
+{
+    ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
+    ImVec2 beginPos = ImGui::GetCursorScreenPos();
+    beginPos.x -= ImGui::GetStyle().FramePadding.x;
+    ImVec2 endPos = ImVec2(beginPos.x + textSize.x + ImGui::GetStyle().FramePadding.x * 2, beginPos.y + ImGui::GetTextLineHeight() + ImGui::GetStyle().FramePadding.y * 2);
+    ImRect bb(beginPos, endPos);
+    ImGui::GetWindowDrawList()->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(color));
+    ImGui::Text(text.c_str());
+}
+
 bool EditorUI::Init()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -283,15 +295,17 @@ void EditorUI::DrawVec3Control(const std::string& field_name, std::shared_ptr<Co
     if (ImGui::BeginTable("##vec3", 3, table_flags))
     {
         ImGui::TableNextColumn();
-        ImGui::Text("x");
+        // Get the size of the text
+        ImVec2 textSize = ImGui::CalcTextSize("z");
+        DrawTextBackground("x", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
         ImGui::SameLine();
         ImGui::DragFloat("##x", &vec3.x, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
         ImGui::TableNextColumn();
-        ImGui::Text("y");
+        DrawTextBackground("y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
         ImGui::SameLine();
         ImGui::DragFloat("##y", &vec3.y, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
         ImGui::TableNextColumn();
-        ImGui::Text("z");
+        DrawTextBackground("z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
         ImGui::SameLine();
         ImGui::DragFloat("##z", &vec3.z, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
         ImGui::EndTable();
@@ -317,15 +331,15 @@ void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_
     if (ImGui::BeginTable("##quat", 3, table_flags))
     {
         ImGui::TableNextColumn();
-        ImGui::Text("x");
+        DrawTextBackground("x", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
         ImGui::SameLine();
         ImGui::DragFloat("##x", &angle.x, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
         ImGui::TableNextColumn();
-        ImGui::Text("y");
+        DrawTextBackground("y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
         ImGui::SameLine();
         ImGui::DragFloat("##y", &angle.y, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
         ImGui::TableNextColumn();
-        ImGui::Text("z");
+        DrawTextBackground("z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
         ImGui::SameLine();
         ImGui::DragFloat("##z", &angle.z, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
         ImGui::EndTable();

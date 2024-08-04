@@ -46,6 +46,7 @@ bool Mesh::Load(const std::string& file_path)
 
     m_path = file_path;
     ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f));
+    spdlog::info("Mesh {} loaded successfully.", file_path);
     return true;
 }
 
@@ -75,21 +76,30 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
     // process vertices
     for(unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
-        Vertex vertex;
-        // process vertex positions, normals and texture coordinates
-        vertex.position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
-        vertex.position = transform * glm::vec4(vertex.position, 1.0f);
-        vertex.normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
-        vertex.normal = glm::normalize(normalMatrix * glm::vec4(vertex.normal, 0.0f));
-        if (mesh->mTextureCoords[0]) // does the mesh contain texture coordinates?
+        glm::vec3 position, normal;
+        glm::vec2 tex_coord;
+        glm::vec4 color;
+        if (mesh->HasPositions())
         {
-            vertex.texCoords = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+            position = transform * glm::vec4(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z), 1.0f);
         }
-        else
+
+        if (mesh->HasNormals())
         {
-            vertex.texCoords = glm::vec2(0.0f, 0.0f);
+            normal = glm::normalize(normalMatrix * glm::vec4(glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z), 0.0f));
         }
-        vertices.push_back(vertex);
+
+        if (mesh->HasTextureCoords(0))
+        {
+            tex_coord = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+        }
+        
+        if (mesh->HasVertexColors(0))
+        {
+            color = glm::vec4(mesh->mColors[0][i].r, mesh->mColors[0][i].g, mesh->mColors[0][i].b, mesh->mColors[0][i].a);
+        }
+
+        vertices.emplace_back(std::move(position), std::move(normal), std::move(tex_coord), std::move(color));
     }
     // process indices
     for(unsigned int i = 0; i < mesh->mNumFaces; i++)
@@ -102,17 +112,15 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         }
     }
     // process material
+    aiColor3D color;
     if (mesh->mMaterialIndex >= 0)
     {
         std::filesystem::path base_path(m_path);
         auto base_path_str = base_path.remove_filename().string();
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+        material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
         // diffuse maps
         std::vector<TextureID> albedoMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, base_path_str);
-        if (albedoMaps.empty())
-        {
-            albedoMaps = {TextureManager::GetInstance().GetDummyWhiteTexture().texture.GetID()}; // Default white texture.
-        }
         textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
         // specular maps
         std::vector<TextureID> specularMaps = LoadMaterialTextures(material, aiTextureType_SPECULAR, base_path_str);
@@ -139,7 +147,9 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         std::vector<TextureID> aoMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, base_path_str);
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
     }
-    return SubMesh(std::move(vertices), std::move(indices), std::move(textures));
+
+    if (!textures.empty()) m_has_textures = true;
+    return SubMesh(color, std::move(vertices), std::move(indices), std::move(textures));
 }
 
 std::vector<TextureID> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextureType type, const std::string& base_path)

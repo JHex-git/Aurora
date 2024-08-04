@@ -19,6 +19,7 @@ class Mesh : public Component
     friend class MeshPhongPass;
     friend class MeshOutlinePass;
     friend class SkyboxPass;
+    friend class GizmosPass;
 public:
     Mesh() : Component("Mesh") { }
     ~Mesh() = default;
@@ -30,6 +31,8 @@ public:
 
     void Update() override;
 
+    const bool HasTextures() const { return m_has_textures; }
+
 private:
     void ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4& parentTransform);
     SubMesh ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& transform);
@@ -39,6 +42,8 @@ private:
 private:
     std::vector<SubMesh> m_submeshes;
     std::unordered_map<std::string, TextureID> m_texturePath_to_id;
+
+    bool m_has_textures = false;
 
     REFLECTABLE_DECLARE(Mesh, m_path)
     std::string m_path;

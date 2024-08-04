@@ -15,7 +15,8 @@ bool RenderPipeline::Init()
     m_mesh_phong_pass = std::make_unique<MeshPhongPass>();
     m_mesh_outline_pass = std::make_unique<MeshOutlinePass>();
     m_skybox_pass = std::make_unique<SkyboxPass>();
-    return m_mesh_phong_pass->Init() && m_mesh_outline_pass->Init() && m_skybox_pass->Init();
+    m_gizmos_pass = std::make_unique<GizmosPass>();
+    return m_mesh_phong_pass->Init() && m_mesh_outline_pass->Init() && m_skybox_pass->Init() && m_gizmos_pass->Init();
 }
 
 void RenderPipeline::Render()
@@ -39,7 +40,11 @@ void RenderPipeline::Render()
             m_mesh_outline_pass->SetMeshRenderMaterial(selected_mesh_renderer->GetRenderMaterial());
             m_mesh_outline_pass->Render(m_render_size);
         }
+
+        m_gizmos_pass->SetSelectedTransform(selected_scene_object->GetTransform());
     }
+
+    m_gizmos_pass->Render(m_render_size);
     m_fbo.Unbind();
 }
 
