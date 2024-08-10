@@ -16,12 +16,7 @@ namespace Aurora
 class RenderPipeline
 {
 public:
-    RenderPipeline(std::array<int, 2> render_size = {1920, 1080}) : 
-        m_render_size(render_size), 
-        m_fbo(FrameBufferObjectBuilder(m_render_size[0], m_render_size[1]).AddColorAttachment(GL_RGBA)
-                                                                          .EnableDepthStencilAttachment()
-                                                                          .Create().value())
-    { }
+    RenderPipeline(std::array<int, 2> render_size = {1920, 1080});
     ~RenderPipeline() = default;
 
     bool Init();
@@ -30,7 +25,7 @@ public:
     void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material);
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material);
 
-    int GetRenderTargetID() const { return m_fbo.GetColorAttachmentID(0); }
+    int GetRenderTargetID() const { return m_fbo->GetColorAttachmentID(0); }
 
 private:
     std::unique_ptr<MeshPhongPass> m_mesh_phong_pass;
@@ -39,6 +34,6 @@ private:
     std::unique_ptr<GizmosPass> m_gizmos_pass;
 
     std::array<int, 2> m_render_size;
-    FrameBufferObject m_fbo;
+    std::shared_ptr<FrameBufferObject> m_fbo;
 };
 } // namespace Aurora

@@ -13,8 +13,16 @@ namespace Aurora
 {
 
 constexpr float outline_thickness = 10.f;
-bool SkyboxPass::Init()
+bool SkyboxPass::Init(const std::array<int, 2>& viewport_size)
 {
+    if (!RenderPass::Init(viewport_size)) return false;
+    
+    auto fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
+                                        .AddColorAttachment()
+                                        .EnableDepthAttachmentOnly().Create();
+    if (!fbo.has_value()) return false;
+    m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+
     std::vector<Shader> shaders;
     shaders.emplace_back(ShaderType::VertexShader);
     if (!shaders[0].Load(FileSystem::GetFullPath("shaders/skybox.vert")))
@@ -38,8 +46,11 @@ bool SkyboxPass::Init()
     return true;
 }
 
-void SkyboxPass::Render(const std::array<int, 2>& viewport_size)
+void SkyboxPass::Render()
 {
+    m_fbo->Bind();
+    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
+
     if (m_shader_program != nullptr && m_skybox_render_material != nullptr)
     {
         glDepthFunc(GL_LEQUAL);
@@ -63,5 +74,6 @@ void SkyboxPass::Render(const std::array<int, 2>& viewport_size)
         glCullFace(GL_BACK);
         m_shader_program->Unbind();
     }
+    m_fbo->Unbind();
 }
 } // namespace Aurora

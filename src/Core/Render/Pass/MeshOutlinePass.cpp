@@ -13,8 +13,16 @@ namespace Aurora
 {
 
 constexpr float outline_thickness = 10.f;
-bool MeshOutlinePass::Init()
+bool MeshOutlinePass::Init(const std::array<int, 2>& viewport_size)
 {
+    if (!RenderPass::Init(viewport_size)) return false;
+    
+    auto fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
+                                        .AddColorAttachment()
+                                        .EnableDepthStencilAttachment().Create();
+    if (!fbo.has_value()) return false;
+    m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+
     {
         std::vector<Shader> shaders;
         shaders.emplace_back(ShaderType::VertexShader);
@@ -67,8 +75,11 @@ bool MeshOutlinePass::Init()
     return true;
 }
 
-void MeshOutlinePass::Render(const std::array<int, 2>& viewport_size)
+void MeshOutlinePass::Render()
 {
+    m_fbo->Bind();
+    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
+    glClear(GL_STENCIL_BUFFER_BIT);
     if (m_mesh_stencil_shader_program == nullptr || m_outline_shader_program == nullptr) return;
 
     glDisable(GL_DEPTH_TEST);
@@ -111,8 +122,8 @@ void MeshOutlinePass::Render(const std::array<int, 2>& viewport_size)
     m_outline_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
     m_outline_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
     m_outline_shader_program->SetUniform("uOutlineThickness", outline_thickness);
-    m_outline_shader_program->SetUniform("uScreenWidth", viewport_size[0]);
-    m_outline_shader_program->SetUniform("uScreenHeight", viewport_size[1]);
+    m_outline_shader_program->SetUniform("uScreenWidth", m_viewport_size[0]);
+    m_outline_shader_program->SetUniform("uScreenHeight", m_viewport_size[1]);
     m_outline_shader_program->SetUniform("uColor", glm::vec3(1.0f, 1.0f, 1.0f));
     for (size_t i = 0; i < m_selected_mesh_render_material->m_mesh->m_submeshes.size(); ++i)
     {
@@ -135,5 +146,6 @@ void MeshOutlinePass::Render(const std::array<int, 2>& viewport_size)
     glStencilMask(0xFF);
     glStencilFunc(GL_ALWAYS, 0, 0xFF);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    m_fbo->Unbind();
 }
 } // namespace Aurora

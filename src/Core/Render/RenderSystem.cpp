@@ -11,7 +11,7 @@ namespace Aurora
 
 bool RenderSystem::Init()
 {
-    glfwSwapInterval(1); // Enable vsync
+    glfwSwapInterval(0); // Enable vsync
     m_editor_ui_renderer = std::make_unique<EditorUIRenderer>();
     m_view_window = std::make_unique<ViewWindow>();
     return m_editor_ui_renderer->Init() && m_view_window->Init();

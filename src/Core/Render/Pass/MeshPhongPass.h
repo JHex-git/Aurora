@@ -17,8 +17,8 @@ public:
     MeshPhongPass() = default;
     ~MeshPhongPass() = default;
 
-    bool Init() override;
-    void Render(const std::array<int, 2>& viewport_size) override;
+    bool Init(const std::array<int, 2>& viewport_size) override;
+    void Render() override;
 
     void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material) { m_mesh_render_materials.push_back(mesh_render_material); }
 

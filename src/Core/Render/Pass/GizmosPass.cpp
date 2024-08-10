@@ -12,8 +12,16 @@
 namespace Aurora
 {
 
-bool GizmosPass::Init()
+bool GizmosPass::Init(const std::array<int, 2>& viewport_size)
 {
+    if (!RenderPass::Init(viewport_size)) return false;
+    
+    auto fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
+                                        .AddColorAttachment()
+                                        .EnableDepthAttachmentOnly().Create();
+    if (!fbo.has_value()) return false;
+    m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+
     std::vector<Shader> shaders;
     shaders.emplace_back(ShaderType::VertexShader);
     auto vert_shader_path = FileSystem::GetFullPath("shaders/mesh.vert");
@@ -60,11 +68,13 @@ bool GizmosPass::Init()
     return true;
 }
 
-void GizmosPass::Render(const std::array<int, 2>& viewport_size)
+void GizmosPass::Render()
 {
+    m_fbo->Bind();
+    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
+    glClear(GL_DEPTH_BUFFER_BIT);
     if (m_shader_program == nullptr) return;
 
-    glClear(GL_DEPTH_BUFFER_BIT);
 
     // render handle
     if (auto selected_transform = m_selected_transform.lock())
@@ -89,5 +99,6 @@ void GizmosPass::Render(const std::array<int, 2>& viewport_size)
         }
         m_shader_program->Unbind();
     }
+    m_fbo->Unbind();
 }
 } // namespace Aurora

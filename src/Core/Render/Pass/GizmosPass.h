@@ -17,8 +17,8 @@ public:
     GizmosPass() = default;
     virtual ~GizmosPass() = default;
 
-    bool Init() override;
-    void Render(const std::array<int, 2>& viewport_size) override;
+    bool Init(const std::array<int, 2>& viewport_size) override;
+    void Render() override;
 
     void SetSelectedTransform(std::shared_ptr<Transform> select_transform) { m_selected_transform = select_transform; }
 

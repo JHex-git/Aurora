@@ -17,8 +17,8 @@ public:
     MeshOutlinePass() = default;
     ~MeshOutlinePass() = default;
 
-    bool Init() override;
-    void Render(const std::array<int, 2>& viewport_size) override;
+    bool Init(const std::array<int, 2>& viewport_size) override;
+    void Render() override;
 
     void SetMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material) { m_selected_mesh_render_material = mesh_render_material; }
 

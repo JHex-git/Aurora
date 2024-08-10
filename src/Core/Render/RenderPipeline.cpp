@@ -6,9 +6,20 @@
 #include "Core/Render/RenderPipeline.h"
 #include "Runtime/Scene/SceneManager.h"
 #include "Runtime/Scene/Components/MeshRenderer.h"
+#include "glWrapper/Utils.h"
 
 namespace Aurora
 {
+
+RenderPipeline::RenderPipeline(std::array<int, 2> render_size) :
+        m_render_size(render_size)
+{
+    auto fbo = FrameBufferObjectBuilder(m_render_size[0], m_render_size[1])
+                                        .AddColorAttachment(GL_RGBA)
+                                        .EnableDepthStencilAttachment().Create();
+    if (!fbo.has_value()) m_fbo = nullptr;
+    else m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+}
 
 bool RenderPipeline::Init()
 {
@@ -16,18 +27,18 @@ bool RenderPipeline::Init()
     m_mesh_outline_pass = std::make_unique<MeshOutlinePass>();
     m_skybox_pass = std::make_unique<SkyboxPass>();
     m_gizmos_pass = std::make_unique<GizmosPass>();
-    return m_mesh_phong_pass->Init() && m_mesh_outline_pass->Init() && m_skybox_pass->Init() && m_gizmos_pass->Init();
+    return m_mesh_phong_pass->Init(m_render_size) && 
+           m_mesh_outline_pass->Init(m_render_size) && 
+           m_skybox_pass->Init(m_render_size) && 
+           m_gizmos_pass->Init(m_render_size);
 }
 
 void RenderPipeline::Render()
 {
-    m_fbo.Bind();
-    glViewport(0, 0, m_render_size[0], m_render_size[1]);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-    m_mesh_phong_pass->Render(m_render_size);
-
-    m_skybox_pass->Render(m_render_size);
+    m_mesh_phong_pass->Render();
+    Blit(m_mesh_phong_pass->GetFrameBuffer(), m_skybox_pass->GetFrameBuffer());
+    m_skybox_pass->Render();
+    RenderPass* prev_pass = m_skybox_pass.get();
 
     // Outline should be rendered after all to ensure not be occluded
     // Use stencil buffer to avoid covering the selected mesh
@@ -38,14 +49,17 @@ void RenderPipeline::Render()
         if (selected_mesh_renderer != nullptr)
         {
             m_mesh_outline_pass->SetMeshRenderMaterial(selected_mesh_renderer->GetRenderMaterial());
-            m_mesh_outline_pass->Render(m_render_size);
+            BlitColor(m_skybox_pass->GetFrameBuffer(), m_mesh_outline_pass->GetFrameBuffer());
+            m_mesh_outline_pass->Render();
+            prev_pass = m_mesh_outline_pass.get();
         }
 
         m_gizmos_pass->SetSelectedTransform(selected_scene_object->GetTransform());
     }
 
-    m_gizmos_pass->Render(m_render_size);
-    m_fbo.Unbind();
+    Blit(prev_pass->GetFrameBuffer(), m_gizmos_pass->GetFrameBuffer());
+    m_gizmos_pass->Render();
+    Blit(m_gizmos_pass->GetFrameBuffer(), m_fbo);
 }
 
 void RenderPipeline::AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material)

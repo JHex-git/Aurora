@@ -14,8 +14,16 @@
 namespace Aurora
 {
 
-bool MeshPhongPass::Init()
+bool MeshPhongPass::Init(const std::array<int, 2>& viewport_size)
 {
+    if (!RenderPass::Init(viewport_size)) return false;
+    
+    auto fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
+                                        .AddColorAttachment(GL_RGBA)
+                                        .EnableDepthAttachmentOnly().Create();
+    if (!fbo.has_value()) return false;
+    m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+
     // shader program with texture
     {
         std::vector<Shader> shaders;
@@ -73,8 +81,12 @@ bool MeshPhongPass::Init()
     return true;
 }
 
-void MeshPhongPass::Render(const std::array<int, 2>& viewport_size)
+void MeshPhongPass::Render()
 {
+    m_fbo->Bind();
+    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
     if (m_tex_shader_program != nullptr && m_no_tex_shader_program != nullptr)
     {
         glEnable(GL_DEPTH_TEST);
@@ -123,7 +135,6 @@ void MeshPhongPass::Render(const std::array<int, 2>& viewport_size)
             }
         }
     }
-
-
+    m_fbo->Unbind();
 }
 } // namespace Aurora
