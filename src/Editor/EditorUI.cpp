@@ -34,6 +34,19 @@ bool EditorUI::Init()
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.Fonts->AddFontFromFileTTF(FileSystem::GetFullPath("assets/fonts/Microsoft Yahei.ttf").c_str(), 17.0f);
 
+    ImGuiStyle* style  = &ImGui::GetStyle();
+    ImVec4*     colors = style->Colors;
+    auto titlebg_color = ImVec4(42.0f / 255.0f, 45.0f / 255.0f, 46.0f / 255.0f, 1.00f);
+    colors[ImGuiCol_Tab]                   = titlebg_color;
+    colors[ImGuiCol_TabHovered]            = titlebg_color;
+    colors[ImGuiCol_TabActive]             = titlebg_color;
+    colors[ImGuiCol_TabUnfocused]          = titlebg_color;
+    colors[ImGuiCol_TabUnfocusedActive]    = titlebg_color;
+    colors[ImGuiCol_TitleBg]               = titlebg_color;
+    colors[ImGuiCol_TitleBgActive]         = titlebg_color;
+    colors[ImGuiCol_TitleBgCollapsed]      = titlebg_color;
+    colors[ImGuiCol_ButtonHovered]         = ImVec4(100.0f / 255.0f, 100.0f / 255.0f, 100.0f / 255.0f, 1.00f);
+
     return true;
 }
 
@@ -55,18 +68,20 @@ void EditorUI::ShowDialog()
 
 void EditorUI::ShowMainPanel()
 {
-    ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_DockSpace;
+    ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_DockSpace | ImGuiDockNodeFlags_NoWindowMenuButton;
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoMove |
                                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | 
                                     ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | 
                                     ImGuiWindowFlags_NoBringToFrontOnFocus;
+    
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f)); // ensure no padding between panels
 
     ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize); // FIXME:
+    ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(viewport->WorkSize, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowViewport(viewport->ID);
 
-    if (!ImGui::Begin("Editor", &m_show_main_panel, window_flags))
+    if (!ImGui::Begin("Editor", nullptr, window_flags))
     {
         ImGui::End();
         return;
@@ -76,7 +91,7 @@ void EditorUI::ShowMainPanel()
     if (!ImGui::DockBuilderGetNode(dockspace_id))
     {
         ImGui::DockBuilderAddNode(dockspace_id, dockspace_flags);
-        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize); // FIXME:
+        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
         
         ImGuiID left_container;
         ImGuiID right = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.25f, nullptr, &left_container);
@@ -92,7 +107,7 @@ void EditorUI::ShowMainPanel()
         ImGui::DockBuilderDockWindow("File Content", left_container_down);
         ImGui::DockBuilderDockWindow("Inspector", right);
     }
-    ImGui::DockSpace(dockspace_id);
+    ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
     
     
     if (ImGui::BeginMainMenuBar())
@@ -144,6 +159,7 @@ void EditorUI::ShowMainPanel()
     }
 
     ImGui::End();
+    ImGui::PopStyleVar();
 }
 
 void EditorUI::ShowSceneObjectRecursive(const std::shared_ptr<SceneObject>& scene_object)
@@ -174,7 +190,7 @@ void EditorUI::ShowSceneObjectRecursive(const std::shared_ptr<SceneObject>& scen
 void EditorUI::ShowScenePanel()
 {
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoMove;
-    if (!ImGui::Begin("Scene", &m_show_scene_panel, window_flags))
+    if (!ImGui::Begin("Scene", nullptr, window_flags))
     {
         ImGui::End();
         return;
@@ -194,7 +210,7 @@ void EditorUI::ShowScenePanel()
 void EditorUI::ShowInspectorPanel()
 {
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoMove;
-    if (!ImGui::Begin("Inspector", &m_show_inspector_panel, window_flags))
+    if (!ImGui::Begin("Inspector", nullptr, window_flags))
     {
         ImGui::End();
         return;

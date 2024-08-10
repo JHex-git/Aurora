@@ -34,10 +34,6 @@ private:
     void DrawVec3Control(const std::string& field_name, std::shared_ptr<Component> component);
     void DrawQuaternionControl(const std::string& field_name, std::shared_ptr<Component> component);
 
-    bool m_show_main_panel = true;
-    bool m_show_scene_panel = true;
-    bool m_show_inspector_panel = true;
-
     bool m_show_skybox_dialog = false;
     bool m_show_skybox_dialog1 = true;
 
