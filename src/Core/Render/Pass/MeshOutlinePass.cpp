@@ -18,8 +18,8 @@ bool MeshOutlinePass::Init(const std::array<int, 2>& viewport_size)
     if (!RenderPass::Init(viewport_size)) return false;
     
     auto fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
-                                        .AddColorAttachment()
-                                        .EnableDepthStencilAttachment().Create();
+                                        .AddColorAttachment({})
+                                        .EnableDepthAttachment({.has_stencil = true}).Create();
     if (!fbo.has_value()) return false;
     m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
 

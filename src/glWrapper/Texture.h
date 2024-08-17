@@ -104,6 +104,7 @@ public:
     std::optional<Texture> MakeTexture2D(GLsizei width, GLsizei height, GLint format, GLenum type);
     std::optional<Texture> MakeTexture2D(const std::string& path);
 
+    std::optional<Texture> MakeTextureCubeMap(GLsizei width, GLsizei height, GLint format, GLenum type);
     std::optional<Texture> MakeTextureCubeMap(const std::array<std::string, 6>& paths);
 
 private:
@@ -122,7 +123,7 @@ class Texture
     friend class TextureBuilder;
     friend class TextureManager;
 public:
-    enum class TextureType : GLenum
+    enum class Type : GLenum
     {
         Texture2D = GL_TEXTURE_2D,
         Cubemap = GL_TEXTURE_CUBE_MAP
@@ -140,11 +141,12 @@ public:
     void Unbind();
 
     unsigned int GetID() const { return m_textureID; }
+    Type GetType() const { return m_type; }
 
 private:
-    Texture(TextureType texture_type);
+    Texture(Type texture_type);
     
-    TextureType m_type;
+    Type m_type;
     TextureID m_textureID;
     int m_unit;
 };

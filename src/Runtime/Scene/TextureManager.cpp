@@ -11,7 +11,7 @@ namespace Aurora
 SurfaceTexture& TextureManager::GetDummyWhiteTexture()
 {
     static unsigned int dummy_white_id = [&]() {
-        Texture texture(Texture::TextureType::Texture2D);
+        Texture texture(Texture::Type::Texture2D);
         texture.Bind();
         unsigned char white_pixel[] = { 255, 255, 255, 255 };
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white_pixel);

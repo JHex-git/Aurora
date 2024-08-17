@@ -15,8 +15,8 @@ RenderPipeline::RenderPipeline(std::array<int, 2> render_size) :
         m_render_size(render_size)
 {
     auto fbo = FrameBufferObjectBuilder(m_render_size[0], m_render_size[1])
-                                        .AddColorAttachment(GL_RGBA)
-                                        .EnableDepthStencilAttachment().Create();
+                                        .AddColorAttachment({.internal_format = GL_RGBA} )
+                                        .EnableDepthAttachment({.has_stencil = true}).Create();
     if (!fbo.has_value()) m_fbo = nullptr;
     else m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
 }

@@ -12,7 +12,7 @@ namespace Aurora
 
 std::optional<Texture> TextureBuilder::MakeTexture2D(GLsizei width, GLsizei height, GLint format, GLenum type)
 {
-    Texture texture(Texture::TextureType::Texture2D);
+    Texture texture(Texture::Type::Texture2D);
     texture.Bind();
     glTexImage2D(GL_TEXTURE_2D, 0, m_internal_format, width, height, 0, format, type, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
@@ -54,7 +54,7 @@ std::optional<Texture> TextureBuilder::MakeTexture2D(const std::string& path)
             break;
         }
 
-        Texture texture(Texture::TextureType::Texture2D);
+        Texture texture(Texture::Type::Texture2D);
         texture.Bind();
         glTexImage2D(GL_TEXTURE_2D, 0, m_internal_format, width, height, 0, format, m_require_high_precision ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
@@ -73,6 +73,23 @@ std::optional<Texture> TextureBuilder::MakeTexture2D(const std::string& path)
     }
 }
 
+
+std::optional<Texture> TextureBuilder::MakeTextureCubeMap(GLsizei width, GLsizei height, GLint format, GLenum type)
+{
+    Texture texture(Texture::Type::Cubemap);
+    texture.Bind();
+    for (unsigned int i = 0; i < 6; ++i)
+    {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, m_internal_format, width, height, 0, format, type, nullptr);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(m_mag_filter));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, static_cast<GLint>(m_wrap_s));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, static_cast<GLint>(m_wrap_t));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, static_cast<GLint>(m_wrap_r));
+    return std::move(texture);
+}
+
 std::optional<Texture> TextureBuilder::MakeTextureCubeMap(const std::array<std::string, 6>& paths)
 {
     if (m_gen_mipmap && (m_min_filter == TextureBuilder::FilterType::Nearest || m_min_filter == TextureBuilder::FilterType::Linear))
@@ -81,7 +98,7 @@ std::optional<Texture> TextureBuilder::MakeTextureCubeMap(const std::array<std::
         return std::nullopt;
     }
 
-    Texture texture(Texture::TextureType::Cubemap);
+    Texture texture(Texture::Type::Cubemap);
     texture.Bind();
     stbi_set_flip_vertically_on_load(false);
     for (unsigned int i = 0; i < paths.size(); ++i)
@@ -110,10 +127,6 @@ std::optional<Texture> TextureBuilder::MakeTextureCubeMap(const std::array<std::
             }
 
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, format, m_require_high_precision ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(m_mag_filter));
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, static_cast<GLint>(TextureBuilder::WrapType::ClampToEdge));
-            glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, static_cast<GLint>(TextureBuilder::WrapType::ClampToEdge));
             stbi_image_free(data);
             spdlog::info("Texture {} loaded", paths[i]);
         }
@@ -123,11 +136,15 @@ std::optional<Texture> TextureBuilder::MakeTextureCubeMap(const std::array<std::
             return std::nullopt;
         }
     }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(m_mag_filter));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, static_cast<GLint>(TextureBuilder::WrapType::ClampToEdge));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, static_cast<GLint>(TextureBuilder::WrapType::ClampToEdge));
     if (m_gen_mipmap) glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
     return std::move(texture);
 }
 
-Texture::Texture(TextureType texture_type): m_type(texture_type), m_unit(-1)
+Texture::Texture(Type texture_type): m_type(texture_type), m_unit(-1)
 {
     glGenTextures(1, &m_textureID);
     spdlog::info("Texture {} created", m_textureID);

@@ -12,6 +12,18 @@ namespace Aurora
 {
 class FrameBufferObject;
 
+struct ColorAttachmentDescriptor
+{
+    GLint internal_format = GL_RGB;
+    Texture::Type type = Texture::Type::Texture2D;
+};
+
+struct DepthAttachmentDescriptor
+{
+    bool has_stencil = false;
+    Texture::Type type = Texture::Type::Texture2D;
+};
+
 class FrameBufferObjectBuilder
 {
 public:
@@ -24,19 +36,16 @@ public:
     FrameBufferObjectBuilder(FrameBufferObjectBuilder&&) = delete;
     FrameBufferObjectBuilder& operator=(FrameBufferObjectBuilder&&) = delete;
 
-    FrameBufferObjectBuilder& AddColorAttachment(GLint internal_format = GL_RGB);
-    FrameBufferObjectBuilder& EnableDepthAttachmentOnly();
-    FrameBufferObjectBuilder& EnableDepthStencilAttachment();
+    FrameBufferObjectBuilder& AddColorAttachment(ColorAttachmentDescriptor&& descriptor);
+    FrameBufferObjectBuilder& EnableDepthAttachment(DepthAttachmentDescriptor&& descriptor);
 
     std::optional<FrameBufferObject> Create();
 
 private:
-    bool m_is_depth_enabled = false;
-    bool m_is_stencil_enabled = false;
-
     GLsizei m_width;
     GLsizei m_height;
-    std::vector<GLint> m_color_internal_formats;
+    std::vector<ColorAttachmentDescriptor> m_color_descriptors;
+    std::optional<DepthAttachmentDescriptor> m_depth_descriptor;
 };
 
 class FrameBufferObject
@@ -60,9 +69,28 @@ public:
     void BindDraw() const;
     void UnbindDraw() const;
 
+    // face: 0 to 5
+    void BindColorCubemapFace(size_t index, unsigned int face) const;
+    // face: 0 to 5
+    void BindColorCubemapFaceRead(size_t index, unsigned int face) const;
+    // face: 0 to 5
+    void BindColorCubemapFaceDraw(size_t index, unsigned int face) const;
+
+    // face: 0 to 5
+    void BindDepthCubemapFace(unsigned int face) const;
+    // face: 0 to 5
+    void BindDepthCubemapFaceRead(unsigned int face) const;
+    // face: 0 to 5
+    void BindDepthCubemapFaceDraw(unsigned int face) const;
+
+    void BindColorTexture(size_t index, unsigned int unit);
+    void BindDepthTexture(unsigned int unit);
+
     unsigned int GetColorAttachmentNumber() const { return m_color_attachments.size(); }
     int GetColorAttachmentID(size_t index) const { return index < m_color_attachments.size() ? m_color_attachments[index].GetID() : -1; }
-    int GetDepthStencilAttachmentID() const { return m_depth_stencil_attachment.has_value() ? m_depth_stencil_attachment.value().GetID() : -1; }
+    int GetDepthAttachmentID() const { return m_depth_stencil_attachment.has_value() ? m_depth_stencil_attachment.value().GetID() : -1; }
+
+    std::vector<size_t> GetCubemapColorAttachmentIndices() const;
 
     unsigned int GetID() const { return m_fboID; }
     const std::array<unsigned int, 2> GetSize() const { return { m_width, m_height }; }
