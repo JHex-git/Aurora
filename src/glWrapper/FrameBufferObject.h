@@ -87,8 +87,8 @@ public:
     void BindDepthTexture(unsigned int unit);
 
     unsigned int GetColorAttachmentNumber() const { return m_color_attachments.size(); }
-    int GetColorAttachmentID(size_t index) const { return index < m_color_attachments.size() ? m_color_attachments[index].GetID() : -1; }
-    int GetDepthAttachmentID() const { return m_depth_stencil_attachment.has_value() ? m_depth_stencil_attachment.value().GetID() : -1; }
+    TextureID GetColorAttachmentID(size_t index) const { return index < m_color_attachments.size() ? m_color_attachments[index].GetID() : 0; }
+    TextureID GetDepthAttachmentID() const { return m_depth_stencil_attachment.has_value() ? m_depth_stencil_attachment.value().GetID() : 0; }
 
     std::vector<size_t> GetCubemapColorAttachmentIndices() const;
 

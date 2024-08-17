@@ -4,7 +4,7 @@
 // thirdparty include
 #include "thirdparty/opengl/glad/include/glad/glad.h"
 // Aurora include
-
+#include "glWrapper/Texture.h"
 
 namespace Aurora
 {
@@ -17,4 +17,6 @@ void BlitColor(std::shared_ptr<FrameBufferObject> src, std::shared_ptr<FrameBuff
 void BlitDepth(std::shared_ptr<FrameBufferObject> src, std::shared_ptr<FrameBufferObject> dst, GLenum filter = GL_NEAREST);
 
 void BlitStencil(std::shared_ptr<FrameBufferObject> src, std::shared_ptr<FrameBufferObject> dst, GLenum filter = GL_NEAREST);
+
+void DrawQuad(TextureID texture);
 } // namespace Aurora

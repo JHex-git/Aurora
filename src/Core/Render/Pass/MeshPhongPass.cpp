@@ -11,6 +11,7 @@
 #include "Runtime/Scene/Camera.h"
 #include "Runtime/Scene/LightManager.h"
 #include "Runtime/Scene/TextureManager.h"
+#include "glWrapper/Utils.h"
 
 namespace Aurora
 {
@@ -34,6 +35,12 @@ bool MeshPhongPass::Init(const std::array<int, 2>& viewport_size)
                                         .EnableDepthAttachment({}).Create();
     if (!fbo.has_value()) return false;
     m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+
+    auto shading_fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
+                                        .AddColorAttachment({.internal_format = GL_RGBA})
+                                        .EnableDepthAttachment({}).Create();
+    if (!shading_fbo.has_value()) return false;
+    m_shading_fbo = std::make_shared<FrameBufferObject>(std::move(shading_fbo.value()));
 
     auto shadow_map_fbo = FrameBufferObjectBuilder(1024, 1024).EnableDepthAttachment({.type = Texture::Type::Cubemap}).Create();
     if (!shadow_map_fbo.has_value()) return false;
@@ -118,13 +125,37 @@ bool MeshPhongPass::Init(const std::array<int, 2>& viewport_size)
         }
     }
 
+    // composite shader program
+    {
+        std::vector<Shader> shaders;
+        shaders.emplace_back(ShaderType::VertexShader);
+        auto vert_path = FileSystem::GetFullPath("shaders/quad.vert");
+        if (!shaders[0].Load(vert_path))
+        {
+            spdlog::error("Failed to load vertex shader {}", vert_path);
+            return false;
+        }
+        shaders.emplace_back(ShaderType::FragmentShader);
+        auto frag_path = FileSystem::GetFullPath("shaders/copy.frag");
+        if (!shaders[1].Load(frag_path))
+        {
+            spdlog::error("Failed to load fragment shader {}", frag_path);
+            return false;
+        }
+        m_composite_shader_program = std::make_unique<ShaderProgram>();
+        if (!m_composite_shader_program->Load(shaders))
+        {
+            spdlog::error("Failed to load shader program");
+            return false;
+        }
+    }
+
     return true;
 }
 
 void MeshPhongPass::Render()
 {
     m_fbo->Bind();
-    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     if (m_tex_shader_program != nullptr && m_no_tex_shader_program != nullptr)
@@ -139,28 +170,31 @@ void MeshPhongPass::Render()
             const auto light_owner = light->GetOwner().lock();
             SCOPED_RENDER_EVENT(light_owner ? light_owner->GetName() : "light");
 
+            m_shadow_map_fbo->Bind();
+            for (auto i = 0; i < k_dirs.size(); ++i)
+            {
+                m_shadow_map_fbo->BindDepthCubemapFace(i);
+                glClear(GL_DEPTH_BUFFER_BIT);
+            }
+
+            m_shading_fbo->Bind();
+            glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
             // Generate shadow map
             {
                 SCOPED_RENDER_EVENT("Shadow Pass");
 
                 m_shadow_map_fbo->Bind();
-                for (auto i = 0; i < k_dirs.size(); ++i)
-                {
-                    m_shadow_map_fbo->BindDepthCubemapFace(i);
-                    glClear(GL_DEPTH_BUFFER_BIT);
-                }
-
+                m_shadow_map_shader_program->Bind();
+                m_shadow_map_shader_program->SetUniform("uProjection", 
+                    glm::perspective(glm::radians(90.f), 1.f, MainCamera::GetInstance().GetNearPlane(), MainCamera::GetInstance().GetFarPlane()));
                 for (auto& material : m_mesh_render_materials)
                 {
                     const auto material_owner = material->GetOwner().lock();
                     SCOPED_RENDER_EVENT(material_owner ? material_owner->GetName() : "mesh render material");
 
                     const glm::mat4 model = material->GetModelMatrix();
-
-                    m_shadow_map_shader_program->Bind();
                     m_shadow_map_shader_program->SetUniform("uModel", model);
-                    m_shadow_map_shader_program->SetUniform("uProjection", 
-                        glm::perspective(glm::radians(90.f), 1.f, MainCamera::GetInstance().GetNearPlane(), MainCamera::GetInstance().GetFarPlane()));
 
                     for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
                     {
@@ -172,8 +206,6 @@ void MeshPhongPass::Render()
                         material->m_vbos[i]->Bind();
                         material->m_ebos[i]->Bind();
                         // render shadow map for each face of the cubemap
-                        m_shadow_map_shader_program->Bind();
-                        m_shadow_map_fbo->Bind();
                         for (auto j = 0; j < k_dirs.size(); ++j)
                         {
                             m_shadow_map_shader_program->SetUniform("uView", glm::lookAt(light->GetPosition(), light->GetPosition() + k_dirs[j], k_ups[j]));
@@ -190,7 +222,7 @@ void MeshPhongPass::Render()
             {
                 SCOPED_RENDER_EVENT("Shading Pass");
 
-                m_fbo->Bind();
+                m_shading_fbo->Bind();
                 for (auto& material : m_mesh_render_materials)
                 {
                     auto mesh_shader_program = material->m_mesh->HasTextures() ? m_tex_shader_program.get() : m_no_tex_shader_program.get();
@@ -215,7 +247,6 @@ void MeshPhongPass::Render()
                         material->m_vbos[i]->Bind();
                         material->m_ebos[i]->Bind();
 
-                        mesh_shader_program->Bind();
                         int current_unit = 1;
                         if (material->m_mesh->HasTextures())
                         {
@@ -233,7 +264,6 @@ void MeshPhongPass::Render()
                         }
 
                         // use shadow map to decide the light contribution
-                        mesh_shader_program->Bind();
                         m_shadow_map_fbo->BindDepthTexture(current_unit++);
                         mesh_shader_program->SetUniform("uTexShadowMap", current_unit - 1);
                         glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
@@ -243,8 +273,25 @@ void MeshPhongPass::Render()
                     mesh_shader_program->Unbind();
                 }
             }
+
+            {
+                SCOPED_RENDER_EVENT("Composite Pass");
+
+                m_fbo->Bind();
+                glDisable(GL_DEPTH_TEST);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_ONE, GL_ONE);
+                glBlendEquation(GL_FUNC_ADD);
+                m_shading_fbo->BindColorTexture(0, 1);
+                m_composite_shader_program->Bind();
+                m_composite_shader_program->SetUniform("uTexture", 1);
+                DrawQuad(1);
+                glDisable(GL_BLEND);
+                glEnable(GL_DEPTH_TEST);
+            }
         }
     }
-    m_fbo->Unbind();
+
+    BlitDepth(m_shading_fbo, m_fbo);
 }
 } // namespace Aurora

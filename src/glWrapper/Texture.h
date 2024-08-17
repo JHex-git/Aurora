@@ -140,7 +140,7 @@ public:
     void Bind(unsigned int unit = 0);
     void Unbind();
 
-    unsigned int GetID() const { return m_textureID; }
+    TextureID GetID() const { return m_textureID; }
     Type GetType() const { return m_type; }
 
 private:

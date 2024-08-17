@@ -26,8 +26,10 @@ private:
     std::unique_ptr<ShaderProgram> m_tex_shader_program;
     std::unique_ptr<ShaderProgram> m_no_tex_shader_program;
     std::unique_ptr<ShaderProgram> m_shadow_map_shader_program;
+    std::unique_ptr<ShaderProgram> m_composite_shader_program;
     std::vector<std::shared_ptr<MeshRenderMaterial>> m_mesh_render_materials;
 
     std::shared_ptr<FrameBufferObject> m_shadow_map_fbo;
+    std::shared_ptr<FrameBufferObject> m_shading_fbo;
 };
 } // namespace Aurora
