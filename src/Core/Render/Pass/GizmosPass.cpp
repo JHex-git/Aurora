@@ -8,6 +8,7 @@
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/Camera.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "glWrapper/RenderEventInfo.h"
 
 namespace Aurora
 {
@@ -70,6 +71,7 @@ bool GizmosPass::Init(const std::array<int, 2>& viewport_size)
 
 void GizmosPass::Render()
 {
+    SCOPED_RENDER_EVENT("Gizmos Pass");
     m_fbo->Bind();
     glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
     glClear(GL_DEPTH_BUFFER_BIT);

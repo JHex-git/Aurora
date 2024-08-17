@@ -11,6 +11,7 @@
 #include "Core/Render/EditorUIRenderer.h"
 #include "Editor/EditorUI.h"
 #include "Core/Render/WindowSystem.h"
+#include "glWrapper/RenderEventInfo.h"
 
 namespace Aurora
 {
@@ -43,6 +44,7 @@ bool EditorUIRenderer::Init()
 
 void EditorUIRenderer::Render()
 {
+    SCOPED_RENDER_EVENT("Editor UI");
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();

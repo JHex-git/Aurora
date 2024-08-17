@@ -7,6 +7,7 @@
 #include "Runtime/Scene/SceneManager.h"
 #include "Runtime/Scene/Components/MeshRenderer.h"
 #include "glWrapper/Utils.h"
+#include "glWrapper/RenderEventInfo.h"
 
 namespace Aurora
 {
@@ -35,6 +36,7 @@ bool RenderPipeline::Init()
 
 void RenderPipeline::Render()
 {
+    SCOPED_RENDER_EVENT("Scene Rendering");
     m_mesh_phong_pass->Render();
     Blit(m_mesh_phong_pass->GetFrameBuffer(), m_skybox_pass->GetFrameBuffer());
     m_skybox_pass->Render();

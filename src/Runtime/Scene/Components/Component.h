@@ -23,12 +23,14 @@ public:
     }
     virtual void Update() { }
 
-    virtual void* GetThis() override { return this; }
-
     virtual void Serialize(tinyxml2::XMLElement *node) override = 0;
     virtual void Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner) override = 0;
 
+    std::weak_ptr<SceneObject> GetOwner() { return m_scene_object; }
+
 protected:
+    virtual void* GetThis() override { return this; }
+
     std::weak_ptr<SceneObject> m_scene_object;
 };
 

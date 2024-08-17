@@ -15,9 +15,6 @@ public:
     Reflectable() = default;
     virtual ~Reflectable() = default;
 
-    // This function should be overriden if multiple inheritance is used.
-    virtual void* GetThis() { return this; }
-
     template <typename T>
     const T& GetField(const std::string& field_name)
     {
@@ -35,6 +32,9 @@ public:
     const std::string& GetClassReflectName() const { return m_class_name; }
 
 protected:
+    // This function should be overriden if multiple inheritance is used.
+    virtual void* GetThis() { return this; }
+    
     std::string m_class_name;
 };
 } // namespace Aurora

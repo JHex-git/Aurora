@@ -7,6 +7,7 @@
 #include "Core/Render/Pass/SkyboxPass.h"
 #include "Utility/FileSystem.h"
 #include "glWrapper/Shader.h"
+#include "glWrapper/RenderEventInfo.h"
 #include "Runtime/Scene/Camera.h"
 
 namespace Aurora
@@ -48,6 +49,8 @@ bool SkyboxPass::Init(const std::array<int, 2>& viewport_size)
 
 void SkyboxPass::Render()
 {
+    SCOPED_RENDER_EVENT("Skybox Pass");
+    
     m_fbo->Bind();
     glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
 

@@ -6,6 +6,7 @@
 #include "Core/Render/ViewWindow.h"
 #include "Runtime/Scene/Camera.h"
 #include "Core/Render/WindowSystem.h"
+#include "glWrapper/RenderEventInfo.h"
 
 namespace Aurora
 {
@@ -23,12 +24,14 @@ bool ViewWindow::Init()
 
 void ViewWindow::Render()
 {
+    SCOPED_RENDER_EVENT("View");
     m_render_pipeline->Render();
     RenderViewUI();
 }
 
 void ViewWindow::RenderViewUI()
 {
+    SCOPED_RENDER_EVENT("View UI");
 }
 
 void ViewWindow::OnMousePosCallback(double xpos, double ypos)
