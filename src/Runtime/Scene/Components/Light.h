@@ -24,7 +24,12 @@ public:
 
     virtual bool Init(std::shared_ptr<SceneObject> owner) override;
 
-    glm::vec3 GetPosition() const { return m_scene_object.lock()->GetTransform()->GetField<glm::vec3>("m_position"); }
+    glm::vec3 GetPosition() const 
+    { 
+        auto scene_object = m_scene_object.lock();
+        if (scene_object) return scene_object->GetTransform()->GetField<glm::vec3>("m_position");
+        else return glm::vec3();
+    }
     glm::vec3 GetColor() const { return m_color; }
 
 private:

@@ -21,13 +21,13 @@ public:
 
     LightID RegisterLight(std::shared_ptr<Light> light);
     void UnregisterLight(LightID lightID);
-    const std::vector<std::shared_ptr<Light>>& GetActiveLights() { return m_active_lights; }
+    const std::vector<std::weak_ptr<Light>>& GetActiveLights() { return m_active_lights; }
     void UpdateActiveLights(const glm::vec3& viewPos);
     
 private:
     LightManager() = default;
 
-    std::unordered_map<LightID, std::shared_ptr<Light>> m_lights;
-    std::vector<std::shared_ptr<Light>> m_active_lights;
+    std::unordered_map<LightID, std::weak_ptr<Light>> m_lights;
+    std::vector<std::weak_ptr<Light>> m_active_lights;
 };
 } // namespace Aurora

@@ -30,7 +30,7 @@ private:
     REFLECTABLE_DECLARE(Transform, m_position)
     glm::vec3 m_position = glm::vec3(0.0f);
     REFLECTABLE_DECLARE(Transform, m_rotation)
-    glm::quat m_rotation = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+    glm::quat m_rotation = glm::quat();
     REFLECTABLE_DECLARE(Transform, m_scale)
     glm::vec3 m_scale = glm::vec3(1.0f);
 };

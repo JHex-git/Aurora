@@ -37,7 +37,6 @@ bool Engine::Init()
     }
     spdlog::info("Editor UI Initialized");
 
-    SceneManager::GetInstance().LoadScene(FileSystem::GetFullPath("samples\\test.xml"));
     return true;
 }
 

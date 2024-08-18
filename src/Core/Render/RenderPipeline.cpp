@@ -36,6 +36,9 @@ bool RenderPipeline::Init()
 
 void RenderPipeline::Render()
 {
+    auto scene = SceneManager::GetInstance().GetScene();
+    if (!scene) return;
+
     SCOPED_RENDER_EVENT("Scene Rendering");
     m_mesh_phong_pass->Render();
     Blit(m_mesh_phong_pass->GetFrameBuffer(), m_skybox_pass->GetFrameBuffer());
@@ -44,7 +47,7 @@ void RenderPipeline::Render()
 
     // Outline should be rendered after all to ensure not be occluded
     // Use stencil buffer to avoid covering the selected mesh
-    auto selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
+    auto selected_scene_object = scene->GetSelectedSceneObject();
     if (selected_scene_object != nullptr)
     {
         auto selected_mesh_renderer = selected_scene_object->TryGetComponent<MeshRenderer>();
@@ -64,9 +67,14 @@ void RenderPipeline::Render()
     Blit(m_gizmos_pass->GetFrameBuffer(), m_fbo);
 }
 
-void RenderPipeline::AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material)
+MeshRenderMaterialID RenderPipeline::RegisterMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material)
 {
-    m_mesh_phong_pass->AddMeshRenderMaterial(mesh_render_material);
+    return m_mesh_phong_pass->RegisterMeshRenderMaterial(mesh_render_material);
+}
+
+void RenderPipeline::UnregisterMeshRenderMaterial(MeshRenderMaterialID id)
+{
+    m_mesh_phong_pass->UnregisterMeshRenderMaterial(id);
 }
 
 void RenderPipeline::SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material)

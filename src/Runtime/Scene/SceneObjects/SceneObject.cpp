@@ -7,6 +7,7 @@
 #include "Runtime/Scene/Components/MeshRenderer.h"
 #include "Runtime/Scene/Components/SkyboxRenderer.h"
 #include "Runtime/Scene/Components/Light.h"
+#include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
 {
@@ -88,5 +89,12 @@ void SceneObject::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<
 
         p_child = p_child->NextSiblingElement();
     }
+}
+
+void SceneObject::SetName(const std::string& name)
+{
+    m_name = name;
+    auto scene = SceneManager::GetInstance().GetScene();
+    if (scene != nullptr) scene->SetDirty();
 }
 } // namespace Aurora

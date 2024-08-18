@@ -49,34 +49,35 @@ bool SkyboxPass::Init(const std::array<int, 2>& viewport_size)
 
 void SkyboxPass::Render()
 {
+    auto skybox_render_material = m_skybox_render_material.lock();
+    if (skybox_render_material == nullptr || m_shader_program == nullptr) return;
+    
     SCOPED_RENDER_EVENT("Skybox Pass");
     
     m_fbo->Bind();
     glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
 
-    if (m_shader_program != nullptr && m_skybox_render_material != nullptr)
+    glDepthFunc(GL_LEQUAL);
+    glCullFace(GL_FRONT);
+    m_shader_program->Bind();
+    // render the loaded model
+    const glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), MainCamera::GetInstance().GetPosition());
+    m_shader_program->SetUniform("uMVP", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix() * model);
+    for (size_t i = 0; i < skybox_render_material->m_mesh->m_submeshes.size(); ++i)
     {
-        glDepthFunc(GL_LEQUAL);
-        glCullFace(GL_FRONT);
-        m_shader_program->Bind();
-        // render the loaded model
-        const glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), MainCamera::GetInstance().GetPosition());
-        m_shader_program->SetUniform("uMVP", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix() * model);
-        for (size_t i = 0; i < m_skybox_render_material->m_mesh->m_submeshes.size(); ++i)
-        {
-            m_skybox_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-            
-            m_skybox_render_material->m_vbos[i]->Bind();
-            m_skybox_render_material->m_ebos[i]->Bind();
-            m_skybox_render_material->GetCubemapTexture()->Bind();
-            glDrawElements(GL_TRIANGLES, m_skybox_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            m_skybox_render_material->m_ebos[i]->Unbind();
-            m_skybox_render_material->m_vbos[i]->Unbind();
-        }
-        glDepthFunc(GL_LESS);
-        glCullFace(GL_BACK);
-        m_shader_program->Unbind();
+        skybox_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
+        
+        skybox_render_material->m_vbos[i]->Bind();
+        skybox_render_material->m_ebos[i]->Bind();
+        skybox_render_material->GetCubemapTexture()->Bind();
+        glDrawElements(GL_TRIANGLES, skybox_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
+        skybox_render_material->m_ebos[i]->Unbind();
+        skybox_render_material->m_vbos[i]->Unbind();
     }
+    glDepthFunc(GL_LESS);
+    glCullFace(GL_BACK);
+    m_shader_program->Unbind();
+
     m_fbo->Unbind();
 }
 } // namespace Aurora

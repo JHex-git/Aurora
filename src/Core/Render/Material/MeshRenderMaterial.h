@@ -13,6 +13,8 @@
 namespace Aurora
 {
 
+using MeshRenderMaterialID = unsigned int;
+
 class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from_this<MeshRenderMaterial>
 {
     friend class MeshPhongPass;
@@ -22,7 +24,7 @@ class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from
     
 public:
     MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : RenderMaterial("MeshRenderMaterial"), m_mesh(mesh) { }
-    ~MeshRenderMaterial() = default;
+    virtual ~MeshRenderMaterial();
 
     bool Init(std::shared_ptr<SceneObject> owner) override;
 
@@ -31,10 +33,15 @@ public:
 
     const glm::mat4 GetModelMatrix() const;
 
+    static constexpr MeshRenderMaterialID INVALID_MESH_RENDER_MATERIAL_ID = 0;
+
 private:
+    MeshRenderMaterialID m_material_id = MeshRenderMaterial::INVALID_MESH_RENDER_MATERIAL_ID;
+
     std::shared_ptr<Mesh> m_mesh;
     std::vector<std::shared_ptr<VertexBuffer>> m_vbos;
     std::vector<std::shared_ptr<ElementBuffer>> m_ebos;
+
 };
 
 } // namespace Aurora

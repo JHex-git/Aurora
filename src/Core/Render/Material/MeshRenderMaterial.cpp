@@ -16,6 +16,12 @@
 namespace Aurora
 {
 
+MeshRenderMaterial::~MeshRenderMaterial()
+{
+    if (m_material_id != INVALID_MESH_RENDER_MATERIAL_ID)
+        RenderSystem::GetInstance().UnregisterMeshRenderMaterial(m_material_id);
+}
+
 void MeshRenderMaterial::Serialize(tinyxml2::XMLElement *node)
 {
     node->SetName("Material");
@@ -47,13 +53,16 @@ bool MeshRenderMaterial::Init(std::shared_ptr<SceneObject> owner)
 
     // render materials that are scene irrelevant should not be registered 
     if (owner != SceneManager::GetInstance().GetDummySceneObject())
-        RenderSystem::GetInstance().AddMeshRenderMaterial(shared_from_this());
+        m_material_id = RenderSystem::GetInstance().RegisterMeshRenderMaterial(shared_from_this());
+    
     return true;
 }
 
 const glm::mat4 MeshRenderMaterial::GetModelMatrix() const
 {
-    auto transform = m_scene_object.lock()->GetTransform();
+    auto scene_object = m_scene_object.lock();
+    if (!scene_object) return glm::identity<glm::mat4>();
+    auto transform = scene_object->GetTransform();
 
     glm::vec3 position = transform->GetField<glm::vec3>("m_position");
     glm::quat rotation = transform->GetField<glm::quat>("m_rotation");

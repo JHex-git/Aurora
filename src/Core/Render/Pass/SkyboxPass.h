@@ -24,6 +24,6 @@ public:
 
 private:
     std::unique_ptr<ShaderProgram> m_shader_program;
-    std::shared_ptr<SkyboxRenderMaterial> m_skybox_render_material;
+    std::weak_ptr<SkyboxRenderMaterial> m_skybox_render_material;
 };
 } // namespace Aurora

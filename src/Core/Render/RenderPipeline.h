@@ -22,7 +22,8 @@ public:
     bool Init();
     void Render();
 
-    void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material);
+    MeshRenderMaterialID RegisterMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material);
+    void UnregisterMeshRenderMaterial(MeshRenderMaterialID id);
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material);
 
     int GetRenderTargetID() const { return m_fbo->GetColorAttachmentID(0); }

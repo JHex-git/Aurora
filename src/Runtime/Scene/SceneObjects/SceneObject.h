@@ -33,6 +33,7 @@ public:
     void Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner) override;
 
     const std::string GetName() const { return m_name; }
+    void SetName(const std::string& name);
     const std::vector<std::shared_ptr<Component>>& GetComponents() const { return m_components; }
     const std::vector<std::shared_ptr<SceneObject>>& GetChildren() const { return m_children; }
     std::shared_ptr<Transform> GetTransform() const { return m_transform; }

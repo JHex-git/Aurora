@@ -78,13 +78,15 @@ bool MeshOutlinePass::Init(const std::array<int, 2>& viewport_size)
 
 void MeshOutlinePass::Render()
 {
+    if (m_mesh_stencil_shader_program == nullptr || m_outline_shader_program == nullptr) return;
+    auto selected_mesh_render_material = m_selected_mesh_render_material.lock();
+    if (selected_mesh_render_material == nullptr) return;
+    
     SCOPED_RENDER_EVENT("Mesh Outline Pass");
     m_fbo->Bind();
     glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
     glClear(GL_STENCIL_BUFFER_BIT);
-    if (m_mesh_stencil_shader_program == nullptr || m_outline_shader_program == nullptr) return;
-
-    const glm::mat4 model = m_selected_mesh_render_material->GetModelMatrix();
+    const glm::mat4 model = selected_mesh_render_material->GetModelMatrix();
     {
         SCOPED_RENDER_EVENT("Draw mesh stencil");
 
@@ -103,13 +105,13 @@ void MeshOutlinePass::Render()
         m_mesh_stencil_shader_program->SetUniform("uModel", model);
         m_mesh_stencil_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
         m_mesh_stencil_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
-        for (size_t i = 0; i < m_selected_mesh_render_material->m_mesh->m_submeshes.size(); ++i)
+        for (size_t i = 0; i < selected_mesh_render_material->m_mesh->m_submeshes.size(); ++i)
         {
-            m_selected_mesh_render_material->m_vbos[i]->Bind();
-            m_selected_mesh_render_material->m_ebos[i]->Bind();
-            glDrawElements(GL_TRIANGLES, m_selected_mesh_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            m_selected_mesh_render_material->m_ebos[i]->Unbind();
-            m_selected_mesh_render_material->m_vbos[i]->Unbind();
+            selected_mesh_render_material->m_vbos[i]->Bind();
+            selected_mesh_render_material->m_ebos[i]->Bind();
+            glDrawElements(GL_TRIANGLES, selected_mesh_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
+            selected_mesh_render_material->m_ebos[i]->Unbind();
+            selected_mesh_render_material->m_vbos[i]->Unbind();
         }
         m_mesh_stencil_shader_program->Unbind();
     }
@@ -134,16 +136,16 @@ void MeshOutlinePass::Render()
         m_outline_shader_program->SetUniform("uScreenWidth", m_viewport_size[0]);
         m_outline_shader_program->SetUniform("uScreenHeight", m_viewport_size[1]);
         m_outline_shader_program->SetUniform("uColor", glm::vec3(1.0f, 1.0f, 1.0f));
-        for (size_t i = 0; i < m_selected_mesh_render_material->m_mesh->m_submeshes.size(); ++i)
+        for (size_t i = 0; i < selected_mesh_render_material->m_mesh->m_submeshes.size(); ++i)
         {
-            m_selected_mesh_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-            m_selected_mesh_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
+            selected_mesh_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
+            selected_mesh_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
 
-            m_selected_mesh_render_material->m_vbos[i]->Bind();
-            m_selected_mesh_render_material->m_ebos[i]->Bind();
-            glDrawElements(GL_TRIANGLES, m_selected_mesh_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            m_selected_mesh_render_material->m_ebos[i]->Unbind();
-            m_selected_mesh_render_material->m_vbos[i]->Unbind();
+            selected_mesh_render_material->m_vbos[i]->Bind();
+            selected_mesh_render_material->m_ebos[i]->Bind();
+            glDrawElements(GL_TRIANGLES, selected_mesh_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
+            selected_mesh_render_material->m_ebos[i]->Unbind();
+            selected_mesh_render_material->m_vbos[i]->Unbind();
         }
         m_outline_shader_program->Unbind();
     }

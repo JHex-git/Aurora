@@ -26,6 +26,8 @@ public:
 
     SurfaceTexture& GetDummyWhiteTexture();
 
+    void Reset() { m_surface_textures.clear(); }
+    
     // Note: Make sure the texture exists before calling this function, otherwise it will crash.
     SurfaceTexture& GetTexture(TextureID id);
 private:

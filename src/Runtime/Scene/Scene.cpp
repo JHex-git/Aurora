@@ -11,6 +11,7 @@
 #include "Runtime/Scene/SceneObjects/SceneObjectFactory.h"
 #include "Runtime/Scene/LightManager.h"
 #include "Runtime/Scene/Camera.h"
+#include "Core/Render/RenderSystem.h"
 
 namespace Aurora
 {
@@ -27,22 +28,28 @@ Scene::Scene(const std::string& scene_path)
     m_scene_name = FileSystem::GetFileName(m_scene_path);
 }
 
+void Scene::CreateEmptySceneObject()
+{
+    m_scene_objects.push_back(std::make_shared<SceneObject>("Empty Scene Object"));
+    SetDirty();
+}
+
 void Scene::LoadMesh(std::string file_path)
 {
     m_scene_objects.push_back(SceneObjectFactory::CreateMesh(file_path));
-    m_is_dirty = true;
+    SetDirty();
 }
 
 void Scene::AddSkybox(std::array<std::string, 6>&& skybox_paths)
 {
     m_scene_objects.push_back(SceneObjectFactory::CreateSkybox(std::move(skybox_paths)));
-    m_is_dirty = true;
+    SetDirty();
 }
 
 void Scene::AddLight()
 {
     m_scene_objects.push_back(SceneObjectFactory::CreateLight());
-    m_is_dirty = true;
+    SetDirty();
 }
 
 void Scene::Update()
@@ -68,6 +75,7 @@ void Scene::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneO
     m_scene_objects.clear();
 
     m_scene_name = node->Attribute("Name");
+    spdlog::info("Scene {} loading...", m_scene_name);
     auto p_child = node->FirstChildElement();
     while (p_child != nullptr)
     {
@@ -98,6 +106,16 @@ void Scene::Save()
         doc.SaveFile(m_scene_path.c_str());
         m_is_dirty = false;
         spdlog::info("Scene {} saved.", m_scene_name);
+    }
+}
+
+void Scene::DeleteSelectedSceneObject()
+{
+    if (auto selected_scene_object = m_selected_scene_object.lock())
+    {
+        m_scene_objects.erase(std::remove(m_scene_objects.begin(), m_scene_objects.end(), selected_scene_object), m_scene_objects.end());
+        m_selected_scene_object.reset();
+        SetDirty();
     }
 }
 } // namespace Aurora

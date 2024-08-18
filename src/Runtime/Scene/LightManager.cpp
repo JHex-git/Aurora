@@ -22,8 +22,8 @@ void LightManager::UnregisterLight(LightID lightID)
 
 void LightManager::UpdateActiveLights(const glm::vec3& viewPos)
 {
-    // TODO:
     m_active_lights.clear();
+    // TODO:
     for (const auto& light : m_lights)
     {
         m_active_lights.push_back(light.second);

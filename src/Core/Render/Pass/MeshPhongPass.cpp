@@ -165,8 +165,11 @@ void MeshPhongPass::Render()
         SCOPED_RENDER_EVENT("MeshPhongPass");
 
         const auto& lights = LightManager::GetInstance().GetActiveLights();
-        for (auto light : lights)
+        for (auto p_light : lights)
         {
+            auto light = p_light.lock();
+            if (!light) continue;
+
             const auto light_owner = light->GetOwner().lock();
             SCOPED_RENDER_EVENT(light_owner ? light_owner->GetName() : "light");
 
@@ -188,8 +191,11 @@ void MeshPhongPass::Render()
                 m_shadow_map_shader_program->Bind();
                 m_shadow_map_shader_program->SetUniform("uProjection", 
                     glm::perspective(glm::radians(90.f), 1.f, MainCamera::GetInstance().GetNearPlane(), MainCamera::GetInstance().GetFarPlane()));
-                for (auto& material : m_mesh_render_materials)
+                for (auto& p_material : m_mesh_render_materials)
                 {
+                    auto material = p_material.second.lock();
+                    if (!material) continue;
+                    
                     const auto material_owner = material->GetOwner().lock();
                     SCOPED_RENDER_EVENT(material_owner ? material_owner->GetName() : "mesh render material");
 
@@ -223,8 +229,11 @@ void MeshPhongPass::Render()
                 SCOPED_RENDER_EVENT("Shading Pass");
 
                 m_shading_fbo->Bind();
-                for (auto& material : m_mesh_render_materials)
+                for (auto& p_material : m_mesh_render_materials)
                 {
+                    auto material = p_material.second.lock();
+                    if (!material) continue;
+
                     auto mesh_shader_program = material->m_mesh->HasTextures() ? m_tex_shader_program.get() : m_no_tex_shader_program.get();
                     mesh_shader_program->Bind();
                     const glm::mat4 model = material->GetModelMatrix();
@@ -293,5 +302,17 @@ void MeshPhongPass::Render()
     }
 
     BlitDepth(m_shading_fbo, m_fbo);
+}
+
+MeshRenderMaterialID MeshPhongPass::RegisterMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material)
+{
+    static MeshRenderMaterialID id = 1;
+    m_mesh_render_materials.emplace(id, mesh_render_material);
+    return id++;
+}
+
+void MeshPhongPass::UnregisterMeshRenderMaterial(MeshRenderMaterialID id)
+{
+    m_mesh_render_materials.erase(id);
 }
 } // namespace Aurora

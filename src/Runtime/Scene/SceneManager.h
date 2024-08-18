@@ -29,8 +29,6 @@ public:
 
     ~SceneManager();
 
-    void LoadMesh(std::string file_path);
-
     void LoadScene(const std::string& scene_path);
     void SaveScene();
 

@@ -2,12 +2,10 @@
 
 // thirdparty include
 #include "thirdparty/tinyxml2/tinyxml2.h"
-#include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
 #include "Runtime/Scene/SceneManager.h"
-#include "Runtime/Scene/Components/Mesh.h"
-#include "Core/Render/Material/MeshRenderMaterial.h"
 #include "Utility/FileSystem.h"
+#include "Runtime/Scene/TextureManager.h"
 
 namespace Aurora
 {
@@ -24,14 +22,6 @@ void SceneManager::SaveScene()
     }
 }
 
-void SceneManager::LoadMesh(std::string file_path)
-{
-    if (m_scene)
-    {
-        m_scene->LoadMesh(file_path);
-    }
-}
-
 void SceneManager::Update()
 {
     if (m_scene)
@@ -44,6 +34,7 @@ void SceneManager::LoadScene(const std::string& scene_path)
 {
     // save current scene before load another scene
     SaveScene();
+    TextureManager::GetInstance().Reset();
 
     m_scene = std::make_shared<Scene>(scene_path);
     tinyxml2::XMLDocument doc;

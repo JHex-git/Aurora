@@ -33,7 +33,8 @@ public:
     void Render();
 
     void UpdateViewInfo(ViewInfo&& view_info) { m_view_window->UpdateViewInfo(std::move(view_info)); }
-    void AddMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material);
+    MeshRenderMaterialID RegisterMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material);
+    void UnregisterMeshRenderMaterial(MeshRenderMaterialID id);
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material);
 
     int GetRenderTargetID() const { return m_view_window->GetRenderTargetID(); }

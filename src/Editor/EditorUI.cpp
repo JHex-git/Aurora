@@ -64,6 +64,8 @@ void EditorUI::Layout()
 void EditorUI::ShowDialog()
 {
     ShowSkyboxDialog();
+    ShowImportMeshDialog();
+    ShowLoadSceneDialog();
 }
 
 void EditorUI::ShowMainPanel()
@@ -109,15 +111,16 @@ void EditorUI::ShowMainPanel()
     }
     ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
     
+    ImGui::PopStyleVar();
     
+    bool has_scene = SceneManager::GetInstance().GetScene() != nullptr;
     if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("Load Scene"))
             {
-                // TODO:
-                spdlog::info("Load Scene");
+                m_show_load_scene_dialog = true;
             }
 
             ImGui::EndMenu();
@@ -125,31 +128,35 @@ void EditorUI::ShowMainPanel()
 
         if (ImGui::BeginMenu("Scene"))
         {
-            if (ImGui::MenuItem("New Scene Object"))
+            if (ImGui::MenuItem("New Scene Object", nullptr, nullptr, has_scene))
             {
-                // TODO:
+                SceneManager::GetInstance().GetScene()->CreateEmptySceneObject();
             }
-
-            if (ImGui::MenuItem("New Light"))
+            if (ImGui::MenuItem("New Light", nullptr, nullptr, has_scene))
             {
                 SceneManager::GetInstance().GetScene()->AddLight();
             }
 
-            if (ImGui::BeginMenu("Load Mesh"))
+            if (ImGui::BeginMenu("Load Mesh", has_scene))
             {
+                auto scene = SceneManager::GetInstance().GetScene();
                 if (ImGui::MenuItem("Sphere"))
                 {
-                    SceneManager::GetInstance().LoadMesh("assets/models/sphere.obj");
+                    if (scene) scene->LoadMesh("assets/models/sphere.obj");
                 }
                 if (ImGui::MenuItem("Cube"))
                 {
-                    SceneManager::GetInstance().LoadMesh("assets/models/cube.obj");
+                    if (scene) scene->LoadMesh("assets/models/cube.obj");
+                }
+                if (ImGui::MenuItem("From file..."))
+                {
+                    m_show_import_mesh_dialog = true;
                 }
 
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Add Skybox"))
+            if (ImGui::MenuItem("Add Skybox", nullptr, nullptr, has_scene))
             {
                 m_show_skybox_dialog = true;
             }
@@ -159,7 +166,6 @@ void EditorUI::ShowMainPanel()
     }
 
     ImGui::End();
-    ImGui::PopStyleVar();
 }
 
 void EditorUI::ShowSceneObjectRecursive(const std::shared_ptr<SceneObject>& scene_object)
@@ -173,7 +179,13 @@ void EditorUI::ShowSceneObjectRecursive(const std::shared_ptr<SceneObject>& scen
     bool is_open = ImGui::TreeNodeEx(scene_object->GetName().c_str(), tree_node_flags);
     if (ImGui::IsItemClicked())
     {
-        SceneManager::GetInstance().GetScene()->SetSelectedSceneObject(scene_object);
+        static std::weak_ptr<SceneObject> last_selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
+        if (last_selected_scene_object.lock() != scene_object)
+        {
+            SceneManager::GetInstance().GetScene()->SetSelectedSceneObject(scene_object);
+            last_selected_scene_object = scene_object;
+            strcpy(m_name_buffer, scene_object->GetName().c_str());
+        }
     }
 
     if (is_open)
@@ -215,54 +227,71 @@ void EditorUI::ShowInspectorPanel()
         ImGui::End();
         return;
     }
-    auto selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
-    if (selected_scene_object)
+
+    if (auto scene = SceneManager::GetInstance().GetScene())
     {
-        ImGui::PushID(selected_scene_object->GetName().c_str());
-        ImGui::Text(selected_scene_object->GetName().c_str());
-
-        auto components = selected_scene_object->GetComponents();
-        for (unsigned int i = 0; i <= components.size(); ++i)
+        auto selected_scene_object = scene->GetSelectedSceneObject();
+        if (selected_scene_object)
         {
-            std::shared_ptr<Component> component = (i == 0) ? selected_scene_object->GetTransform() : components[i - 1]; // FIXME: double free
-            std::string component_name = component->GetClassReflectName();
-
-            if (ImGui::CollapsingHeader(component_name.c_str()))
+            ImGui::PushID(selected_scene_object->GetName().c_str());
+            ImGui::Text("Name");
+            ImGui::SameLine();
+            if (ImGui::InputText("##Name", m_name_buffer, IM_ARRAYSIZE(m_name_buffer), 
+                ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_EnterReturnsTrue, 
+                [](ImGuiInputTextCallbackData* data) -> int {
+                    auto selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
+                    selected_scene_object->SetName(data->Buf);
+                    return 0;
+                }))
             {
-                std::string table_name = "##Table" + component_name;
-                if (ImGui::BeginTable(table_name.c_str(), 2))
+                auto selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
+                selected_scene_object->SetName(m_name_buffer);
+            }
+
+            auto components = selected_scene_object->GetComponents();
+            for (unsigned int i = 0; i <= components.size(); ++i)
+            {
+                std::shared_ptr<Component> component = (i == 0) ? selected_scene_object->GetTransform() : components[i - 1];
+                std::string component_name = component->GetClassReflectName();
+
+                if (ImGui::CollapsingHeader(component_name.c_str()))
                 {
-                    const auto& fields = ReflectionFactory::GetInstance().GetFields(component_name);
-                    for (auto& field : fields)
+                    std::string table_name = "##Table" + component_name;
+                    if (ImGui::BeginTable(table_name.c_str(), 2))
                     {
-                        ImGui::TableNextColumn();
-                        ImGui::Text(field.first.c_str());
-                        ImGui::TableNextColumn();
-                        std::string field_type = field.second.GetFieldType();
+                        const auto& fields = ReflectionFactory::GetInstance().GetFields(component_name);
+                        for (auto& field : fields)
+                        {
+                            ImGui::TableNextColumn();
+                            ImGui::Text(field.first.c_str());
+                            ImGui::TableNextColumn();
+                            std::string field_type = field.second.GetFieldType();
 
-                        // TODO: add supported field
-                        if (field_type == "std::string")
-                            ImGui::Text(component->GetField<std::string>(field.first.c_str()).c_str());
-                        else if (field_type == "glm::vec3")
-                        {
-                            DrawVec3Control(field.first, component);
+                            // TODO: add supported field
+                            if (field_type == "std::string")
+                                ImGui::Text(component->GetField<std::string>(field.first.c_str()).c_str());
+                            else if (field_type == "glm::vec3")
+                            {
+                                DrawVec3Control(field.first, component);
+                            }
+                            else if (field_type == "glm::quat")
+                            {
+                                DrawQuaternionControl(field.first, component);
+                            }
+                            else
+                            {
+                                spdlog::error("Unsupported field type {}", field_type.c_str());
+                            }
                         }
-                        else if (field_type == "glm::quat")
-                        {
-                            DrawQuaternionControl(field.first, component);
-                        }
-                        else
-                        {
-                            spdlog::error("Unsupported field type {}", field_type.c_str());
-                        }
+
+                        ImGui::EndTable();
                     }
-
-                    ImGui::EndTable();
                 }
             }
+            ImGui::PopID();
         }
-        ImGui::PopID();
     }
+    
     ImGui::End();
 }
 
@@ -276,8 +305,8 @@ void EditorUI::ShowViewPanel()
     }
 
     double current_time = static_cast<float>(glfwGetTime());
-    double delta_time = current_time - last_frame_time;
-    last_frame_time = current_time;
+    double delta_time = current_time - m_last_frame_time;
+    m_last_frame_time = current_time;
     float fps = 1.0f / delta_time;
     ImGui::Text("FPS: %.1f", fps);
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -396,32 +425,32 @@ void EditorUI::ShowSkyboxDialog()
                 ImGui::Text("Right");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##RightSkybox", right, sizeof(right), ImGuiInputTextFlags_None);
+                ImGui::InputText("##RightSkybox", right, IM_ARRAYSIZE(right), ImGuiInputTextFlags_None);
                 ImGui::TableNextColumn();
                 ImGui::Text("Left");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##LeftSkybox", left, sizeof(left), ImGuiInputTextFlags_None);
+                ImGui::InputText("##LeftSkybox", left, IM_ARRAYSIZE(left), ImGuiInputTextFlags_None);
                 ImGui::TableNextColumn();
                 ImGui::Text("Top");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##TopSkybox", top, sizeof(top), ImGuiInputTextFlags_None);
+                ImGui::InputText("##TopSkybox", top, IM_ARRAYSIZE(top), ImGuiInputTextFlags_None);
                 ImGui::TableNextColumn();
                 ImGui::Text("Bottom");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##BottomSkybox", bottom, sizeof(bottom), ImGuiInputTextFlags_None);
+                ImGui::InputText("##BottomSkybox", bottom, IM_ARRAYSIZE(bottom), ImGuiInputTextFlags_None);
                 ImGui::TableNextColumn();
                 ImGui::Text("Front");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##FrontSkybox", front, sizeof(front), ImGuiInputTextFlags_None);
+                ImGui::InputText("##FrontSkybox", front, IM_ARRAYSIZE(front), ImGuiInputTextFlags_None);
                 ImGui::TableNextColumn();
                 ImGui::Text("Back");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##BackSkybox", back, sizeof(back), ImGuiInputTextFlags_None);
+                ImGui::InputText("##BackSkybox", back, IM_ARRAYSIZE(back), ImGuiInputTextFlags_None);
 
                 ImGui::EndTable();
             }
@@ -440,6 +469,59 @@ void EditorUI::ShowSkyboxDialog()
             if (ImGui::Button("Cancel##SkyboxDialog"))
             {
                 m_show_skybox_dialog = false;
+            }
+            ImGui::EndPopup();
+        }
+    }
+}
+
+void EditorUI::ShowImportMeshDialog()
+{
+    if (m_show_import_mesh_dialog)
+    {
+        ImGui::OpenPopup("Import Mesh Dialog");
+        if (ImGui::BeginPopupModal("Import Mesh Dialog", &m_show_import_mesh_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+            static char file_path[256] = "assets/models/";
+            ImGui::Text("File Path");
+            ImGui::SameLine();
+            ImGui::InputText("##Mesh File Path", file_path, IM_ARRAYSIZE(file_path));
+            if (ImGui::Button("Confirm"))
+            {
+                m_show_import_mesh_dialog = false;
+                auto scene = SceneManager::GetInstance().GetScene();
+                if (scene) scene->LoadMesh(file_path);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+            {
+                m_show_import_mesh_dialog = false;
+            }
+            ImGui::EndPopup();
+        }
+    }
+}
+
+void EditorUI::ShowLoadSceneDialog()
+{
+    if (m_show_load_scene_dialog)
+    {
+        ImGui::OpenPopup("Load Scene Dialog");
+        if (ImGui::BeginPopupModal("Load Scene Dialog", &m_show_load_scene_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+        {
+            static char file_path[256] = "samples/test.xml";
+            ImGui::Text("Scene Path");
+            ImGui::SameLine();
+            ImGui::InputText("##Scene File Path", file_path, IM_ARRAYSIZE(file_path));
+            if (ImGui::Button("Confirm"))
+            {
+                m_show_load_scene_dialog = false;
+                SceneManager::GetInstance().LoadScene(FileSystem::GetFullPath(file_path));
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+            {
+                m_show_load_scene_dialog = false;
             }
             ImGui::EndPopup();
         }

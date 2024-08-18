@@ -25,6 +25,6 @@ public:
 private:
     std::unique_ptr<ShaderProgram> m_mesh_stencil_shader_program;
     std::unique_ptr<ShaderProgram> m_outline_shader_program;
-    std::shared_ptr<MeshRenderMaterial> m_selected_mesh_render_material;
+    std::weak_ptr<MeshRenderMaterial> m_selected_mesh_render_material;
 };
 } // namespace Aurora

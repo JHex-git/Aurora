@@ -2,9 +2,11 @@
 #include <functional>
 // thirdparty include
 #include "thirdparty/opengl/glad/include/glad/glad.h"
+#include "thirdparty/imgui/imgui.h"
 // Aurora include
 #include "Core/Render/ViewWindow.h"
 #include "Runtime/Scene/Camera.h"
+#include "Runtime/Scene/SceneManager.h"
 #include "Core/Render/WindowSystem.h"
 #include "glWrapper/RenderEventInfo.h"
 
@@ -81,6 +83,7 @@ void ViewWindow::OnScrollCallback(double xoffset, double yoffset)
 
 void ViewWindow::OnKeyCallback(int key, int scancode, int action, int mods)
 {
+    if (ImGui::IsAnyItemActive()) return;
     if (key == GLFW_KEY_A && action == GLFW_REPEAT)
     {
         MainCamera::GetInstance().Pan(false);
@@ -96,6 +99,10 @@ void ViewWindow::OnKeyCallback(int key, int scancode, int action, int mods)
     else if (key == GLFW_KEY_S && action == GLFW_REPEAT)
     {
         MainCamera::GetInstance().Dolly(false);
+    }
+    else if (key == GLFW_KEY_DELETE && action == GLFW_PRESS)
+    {
+        SceneManager::GetInstance().GetScene()->DeleteSelectedSceneObject();
     }
 }
 } // namespace Aurora
