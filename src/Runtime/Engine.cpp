@@ -44,7 +44,12 @@ bool Engine::Tick()
 {
     WindowSystem::GetInstance().PollEvents();
     RenderTick();
-    return !WindowSystem::GetInstance().ShouldClose();
+
+    if (WindowSystem::GetInstance().ShouldClose())
+    {
+        return !RenderSystem::GetInstance().OnClose();
+    }
+    return true;
 }
 
 void Engine::RenderTick()

@@ -31,6 +31,8 @@ public:
 
     void LoadScene(const std::string& scene_path);
     void SaveScene();
+    void SaveSceneAs(const std::string& scene_path);
+    void CreateNewScene(const std::string& save_path);
 
     void Update();
 

@@ -35,6 +35,7 @@ bool WindowSystem::Init(unsigned int width, unsigned int height, std::string tit
 
     m_width = width;
     m_height = height;
+    m_title = title;
     glfwMakeContextCurrent(m_window); // make the window the current context  
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))

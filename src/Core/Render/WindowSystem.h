@@ -40,6 +40,20 @@ public:
 
     void SetCursorMode(int mode) const { glfwSetInputMode(m_window, GLFW_CURSOR, mode); }
 
+    void UpdateTitleSurfix(const std::string& surfix)
+    {
+        m_surfix = surfix;
+        auto title = m_prefix + m_title + m_surfix;
+        glfwSetWindowTitle(m_window, title.c_str());
+    }
+
+    void UpdateTitlePrefix(const std::string& prefix)
+    {
+        m_prefix = prefix;
+        auto title = m_prefix + m_title + m_surfix;
+        glfwSetWindowTitle(m_window, title.c_str());
+    }
+
     const std::array<unsigned int, 2> GetWindowSize() const { return { m_width, m_height }; }
     const std::array<double, 2> GetCursorPos() const
     {
@@ -129,7 +143,11 @@ private:
 
     unsigned int m_width;
     unsigned int m_height;
+
+    std::string m_prefix;
     std::string m_title;
+    std::string m_surfix;
+
     GLFWwindow* m_window;
 };
 } // namespace Aurora

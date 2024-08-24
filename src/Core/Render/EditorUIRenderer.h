@@ -1,12 +1,11 @@
 #pragma once
 // std include
-#include <vector>
 #include <memory>
 // thirdparty include
 
 // Aurora include
 #include "Core/Render/Pass/RenderPass.h"
-#include "Core/Render/WindowUI.h"
+#include "Editor/EditorUI.h"
 
 namespace Aurora
 {
@@ -20,7 +19,10 @@ public:
     bool Init();
     void Render();
 
+    void OnSelectedSceneObjectChange() const;
+    bool OnClose() const;
+
 private:
-    std::vector<std::shared_ptr<WindowUI>> m_window_UIs;
+    std::shared_ptr<EditorUI> m_editor_UI;
 };
 } // namespace Aurora

@@ -47,7 +47,160 @@ bool EditorUI::Init()
     colors[ImGuiCol_TitleBgCollapsed]      = titlebg_color;
     colors[ImGuiCol_ButtonHovered]         = ImVec4(100.0f / 255.0f, 100.0f / 255.0f, 100.0f / 255.0f, 1.00f);
 
+    InitDialogs();
     return true;
+}
+
+void EditorUI::InitDialogs()
+{
+    m_dialog_creator["Skybox"] = [this]() { 
+        if (m_show_skybox_dialog)
+        {
+            static char right[256] = "assets/textures/skybox/right.jpg";
+            static char left[256] = "assets/textures/skybox/left.jpg";
+            static char top[256] = "assets/textures/skybox/top.jpg";
+            static char bottom[256] = "assets/textures/skybox/bottom.jpg";
+            static char front[256] = "assets/textures/skybox/front.jpg";
+            static char back[256] = "assets/textures/skybox/back.jpg";
+
+            ImGui::OpenPopup("Skybox");
+            if (ImGui::BeginPopupModal("Skybox", &m_show_skybox_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+            {
+                
+                if (ImGui::BeginTable("##TableSkyboxDialog", 2))
+                {
+                    float first_column_width = ImGui::CalcTextSize("Bottom").x;
+                    ImGui::TableSetupColumn("##ColumnSkyboxDialog1", ImGuiTableColumnFlags_WidthFixed, first_column_width);
+                    ImGui::TableSetupColumn("##ColumnSkyboxDialog2", ImGuiTableColumnFlags_WidthFixed, 300.f);
+
+                    ImGui::TableNextColumn();
+                    ImGui::Text("Right");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::InputText("##RightSkybox", right, IM_ARRAYSIZE(right), ImGuiInputTextFlags_None);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("Left");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::InputText("##LeftSkybox", left, IM_ARRAYSIZE(left), ImGuiInputTextFlags_None);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("Top");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::InputText("##TopSkybox", top, IM_ARRAYSIZE(top), ImGuiInputTextFlags_None);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("Bottom");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::InputText("##BottomSkybox", bottom, IM_ARRAYSIZE(bottom), ImGuiInputTextFlags_None);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("Front");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::InputText("##FrontSkybox", front, IM_ARRAYSIZE(front), ImGuiInputTextFlags_None);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("Back");
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::InputText("##BackSkybox", back, IM_ARRAYSIZE(back), ImGuiInputTextFlags_None);
+
+                    ImGui::EndTable();
+                }
+
+                DialogAction(m_show_skybox_dialog, 
+                    [this](){ SceneManager::GetInstance().GetScene()->AddSkybox({right, left, top, bottom, front, back}); }, 
+                    [](){});
+                ImGui::EndPopup();
+            }
+        }
+    };
+
+    m_dialog_creator["Import Mesh"] = [this]() {
+        if (m_show_import_mesh_dialog)
+        {
+            ImGui::OpenPopup("Import Mesh");
+            if (ImGui::BeginPopupModal("Import Mesh", &m_show_import_mesh_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+            {
+                static char file_path[256] = "assets/models/";
+                ImGui::Text("File Path");
+                ImGui::SameLine();
+                ImGui::InputText("##Mesh File Path", file_path, IM_ARRAYSIZE(file_path));
+                DialogAction(m_show_import_mesh_dialog, 
+                    [this](){ 
+                        auto scene = SceneManager::GetInstance().GetScene();
+                        if (scene) scene->LoadMesh(file_path); 
+                    }, 
+                    [](){});
+                ImGui::EndPopup();
+            }
+        }
+    };
+
+    m_dialog_creator["Load Scene"] = [this](){
+        if (m_show_load_scene_dialog)
+        {
+            ImGui::OpenPopup("Load Scene");
+            if (ImGui::BeginPopupModal("Load Scene", &m_show_load_scene_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+            {
+                static char file_path[256] = "samples/test.xml";
+                ImGui::Text("Scene Path");
+                ImGui::SameLine();
+                ImGui::InputText("##Scene File Path", file_path, IM_ARRAYSIZE(file_path));
+                DialogAction(m_show_load_scene_dialog, 
+                    [this](){ SceneManager::GetInstance().LoadScene(FileSystem::GetFullPath(file_path)); }, 
+                    [](){});
+                ImGui::EndPopup();
+            }
+        }
+    };
+
+    m_dialog_creator["New Scene"] = [this](){
+        if (m_show_new_scene_dialog)
+        {
+            ImGui::OpenPopup("New Scene");
+            if (ImGui::BeginPopupModal("New Scene", &m_show_new_scene_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+            {
+                static char file_path[256] = "samples/new.xml";
+                ImGui::Text("Save Path");
+                ImGui::SameLine();
+                ImGui::InputText("##Scene File Path", file_path, IM_ARRAYSIZE(file_path));
+                DialogAction(m_show_new_scene_dialog, 
+                    [](){ SceneManager::GetInstance().CreateNewScene(FileSystem::GetFullPath(file_path)); }, [](){});
+                ImGui::EndPopup();
+            }
+        }
+    };
+
+    m_dialog_creator["Save Scene"] = [this](){
+        if (m_show_save_scene_dialog)
+        {
+            ImGui::OpenPopup("Save Scene");
+            if (ImGui::BeginPopupModal("Save Scene", &m_show_save_scene_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+            {
+                ImGui::Text("Scene has been modified, do you want to save it?");
+                DialogAction(m_show_save_scene_dialog, 
+                    [this](){ SceneManager::GetInstance().SaveScene(); }, [](){ SceneManager::GetInstance().GetScene()->ClearDirty(); });
+                ImGui::EndPopup();
+            }
+        }
+    };
+
+    m_dialog_creator["Save Scene As"] = [this](){
+        if (m_show_save_scene_as_dialog)
+        {
+            ImGui::OpenPopup("Save Scene As");
+            if (ImGui::BeginPopupModal("Save Scene As", &m_show_save_scene_as_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
+            {
+                static char file_path[256] = "samples/new.xml";
+                ImGui::Text("Scene Path");
+                ImGui::SameLine();
+                ImGui::InputText("##Scene File Path", file_path, IM_ARRAYSIZE(file_path));
+                DialogAction(m_show_save_scene_as_dialog, 
+                    [this](){ SceneManager::GetInstance().SaveSceneAs(FileSystem::GetFullPath(file_path)); }, [](){});
+                ImGui::EndPopup();
+            }
+        }
+    };
 }
 
 void EditorUI::Layout()
@@ -58,14 +211,11 @@ void EditorUI::Layout()
     ShowViewPanel();
     ShowFileContentPanel();
 
-    ShowDialog();
-}
-
-void EditorUI::ShowDialog()
-{
-    ShowSkyboxDialog();
-    ShowImportMeshDialog();
-    ShowLoadSceneDialog();
+    // Show dialog
+    for (auto& dialog : m_dialog_creator)
+    {
+        dialog.second();
+    }
 }
 
 void EditorUI::ShowMainPanel()
@@ -118,9 +268,25 @@ void EditorUI::ShowMainPanel()
     {
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem("Load Scene"))
+            auto scene = SceneManager::GetInstance().GetScene();
+            bool scene_dirty = scene ? scene->IsDirty() : false;
+            if (ImGui::MenuItem("Load Scene..."))
             {
-                m_show_load_scene_dialog = true;
+                if (scene_dirty) m_show_save_scene_dialog = true;
+                else m_show_load_scene_dialog = true;
+            }
+            if (ImGui::MenuItem("New Scene"))
+            {
+                if (scene_dirty) m_show_save_scene_dialog = true;
+                else m_show_new_scene_dialog = true;
+            }
+            if (ImGui::MenuItem("Save Scene", nullptr, nullptr, has_scene))
+            {
+                SceneManager::GetInstance().SaveScene();
+            }
+            if (ImGui::MenuItem("Save Scene As...", nullptr, nullptr, has_scene))
+            {
+                m_show_save_scene_as_dialog = true;
             }
 
             ImGui::EndMenu();
@@ -156,7 +322,7 @@ void EditorUI::ShowMainPanel()
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Add Skybox", nullptr, nullptr, has_scene))
+            if (ImGui::MenuItem("Add Skybox...", nullptr, nullptr, has_scene))
             {
                 m_show_skybox_dialog = true;
             }
@@ -179,13 +345,7 @@ void EditorUI::ShowSceneObjectRecursive(const std::shared_ptr<SceneObject>& scen
     bool is_open = ImGui::TreeNodeEx(scene_object->GetName().c_str(), tree_node_flags);
     if (ImGui::IsItemClicked())
     {
-        static std::weak_ptr<SceneObject> last_selected_scene_object = SceneManager::GetInstance().GetScene()->GetSelectedSceneObject();
-        if (last_selected_scene_object.lock() != scene_object)
-        {
-            SceneManager::GetInstance().GetScene()->SetSelectedSceneObject(scene_object);
-            last_selected_scene_object = scene_object;
-            strcpy(m_name_buffer, scene_object->GetName().c_str());
-        }
+        SceneManager::GetInstance().GetScene()->SetSelectedSceneObject(scene_object);
     }
 
     if (is_open)
@@ -197,6 +357,22 @@ void EditorUI::ShowSceneObjectRecursive(const std::shared_ptr<SceneObject>& scen
         ImGui::TreePop();
     }
 
+}
+
+void EditorUI::OnSelectedSceneObjectChange()
+{
+    strcpy(m_name_buffer, SceneManager::GetInstance().GetScene()->GetSelectedSceneObject()->GetName().c_str());
+}
+
+bool EditorUI::OnClose()
+{
+    auto scene = SceneManager::GetInstance().GetScene();
+    if (scene && scene->IsDirty())
+    {
+        m_show_save_scene_dialog = true;
+        return false;
+    }
+    return true;
 }
 
 void EditorUI::ShowScenePanel()
@@ -399,132 +575,23 @@ void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_
     ImGui::PopID();
 }
 
-void EditorUI::ShowSkyboxDialog()
+void EditorUI::DialogAction(bool& show_dialog, const std::function<void()>& confirm_action, const std::function<void()>& cancel_action)
 {
-    if (m_show_skybox_dialog)
+    const auto& style = ImGui::GetStyle();
+    float confirmButtonWidth = ImGui::CalcTextSize("Confirm").x + style.FramePadding.x * 2.f;
+    float cancelButtonWidth = ImGui::CalcTextSize("Cancel").x + style.FramePadding.x * 2.f;
+    float widthNeeded = confirmButtonWidth + cancelButtonWidth + style.ItemSpacing.x;
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - widthNeeded);
+    if (ImGui::Button("Confirm##Dialog"))
     {
-        static char right[256] = "assets/textures/skybox/right.jpg";
-        static char left[256] = "assets/textures/skybox/left.jpg";
-        static char top[256] = "assets/textures/skybox/top.jpg";
-        static char bottom[256] = "assets/textures/skybox/bottom.jpg";
-        static char front[256] = "assets/textures/skybox/front.jpg";
-        static char back[256] = "assets/textures/skybox/back.jpg";
-
-
-        ImGui::OpenPopup("Skybox Dialog");
-        if (ImGui::BeginPopupModal("Skybox Dialog", &m_show_skybox_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
-        {
-            
-            if (ImGui::BeginTable("##TableSkyboxDialog", 2))
-            {
-                float first_column_width = ImGui::CalcTextSize("Bottom").x;
-                ImGui::TableSetupColumn("##ColumnSkyboxDialog1", ImGuiTableColumnFlags_WidthFixed, first_column_width);
-                ImGui::TableSetupColumn("##ColumnSkyboxDialog2", ImGuiTableColumnFlags_WidthFixed, 300.f);
-
-                ImGui::TableNextColumn();
-                ImGui::Text("Right");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##RightSkybox", right, IM_ARRAYSIZE(right), ImGuiInputTextFlags_None);
-                ImGui::TableNextColumn();
-                ImGui::Text("Left");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##LeftSkybox", left, IM_ARRAYSIZE(left), ImGuiInputTextFlags_None);
-                ImGui::TableNextColumn();
-                ImGui::Text("Top");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##TopSkybox", top, IM_ARRAYSIZE(top), ImGuiInputTextFlags_None);
-                ImGui::TableNextColumn();
-                ImGui::Text("Bottom");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##BottomSkybox", bottom, IM_ARRAYSIZE(bottom), ImGuiInputTextFlags_None);
-                ImGui::TableNextColumn();
-                ImGui::Text("Front");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##FrontSkybox", front, IM_ARRAYSIZE(front), ImGuiInputTextFlags_None);
-                ImGui::TableNextColumn();
-                ImGui::Text("Back");
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputText("##BackSkybox", back, IM_ARRAYSIZE(back), ImGuiInputTextFlags_None);
-
-                ImGui::EndTable();
-            }
-
-            const auto& style = ImGui::GetStyle();
-            float confirmButtonWidth = ImGui::CalcTextSize("Confirm").x + style.FramePadding.x * 2.f;
-            float cancelButtonWidth = ImGui::CalcTextSize("Cancel").x + style.FramePadding.x * 2.f;
-            float widthNeeded = confirmButtonWidth + cancelButtonWidth + style.ItemSpacing.x;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - widthNeeded);
-            if (ImGui::Button("Confirm##SkyboxDialog"))
-            {
-                m_show_skybox_dialog = false;
-                SceneManager::GetInstance().GetScene()->AddSkybox({right, left, top, bottom, front, back});
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel##SkyboxDialog"))
-            {
-                m_show_skybox_dialog = false;
-            }
-            ImGui::EndPopup();
-        }
+        show_dialog = false;
+        confirm_action();
     }
-}
-
-void EditorUI::ShowImportMeshDialog()
-{
-    if (m_show_import_mesh_dialog)
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel##Dialog"))
     {
-        ImGui::OpenPopup("Import Mesh Dialog");
-        if (ImGui::BeginPopupModal("Import Mesh Dialog", &m_show_import_mesh_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
-        {
-            static char file_path[256] = "assets/models/";
-            ImGui::Text("File Path");
-            ImGui::SameLine();
-            ImGui::InputText("##Mesh File Path", file_path, IM_ARRAYSIZE(file_path));
-            if (ImGui::Button("Confirm"))
-            {
-                m_show_import_mesh_dialog = false;
-                auto scene = SceneManager::GetInstance().GetScene();
-                if (scene) scene->LoadMesh(file_path);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel"))
-            {
-                m_show_import_mesh_dialog = false;
-            }
-            ImGui::EndPopup();
-        }
-    }
-}
-
-void EditorUI::ShowLoadSceneDialog()
-{
-    if (m_show_load_scene_dialog)
-    {
-        ImGui::OpenPopup("Load Scene Dialog");
-        if (ImGui::BeginPopupModal("Load Scene Dialog", &m_show_load_scene_dialog, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
-        {
-            static char file_path[256] = "samples/test.xml";
-            ImGui::Text("Scene Path");
-            ImGui::SameLine();
-            ImGui::InputText("##Scene File Path", file_path, IM_ARRAYSIZE(file_path));
-            if (ImGui::Button("Confirm"))
-            {
-                m_show_load_scene_dialog = false;
-                SceneManager::GetInstance().LoadScene(FileSystem::GetFullPath(file_path));
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel"))
-            {
-                m_show_load_scene_dialog = false;
-            }
-            ImGui::EndPopup();
-        }
+        show_dialog = false;
+        cancel_action();
     }
 }
 } // namespace Aurora

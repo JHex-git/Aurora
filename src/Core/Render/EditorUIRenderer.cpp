@@ -33,11 +33,8 @@ bool EditorUIRenderer::Init()
         return false;
     }
 
-    m_window_UIs.push_back(std::make_shared<EditorUI>());
-    for (auto& window_UI : m_window_UIs)
-    {
-        if (!window_UI->Init()) return false;
-    }
+    m_editor_UI = std::make_shared<EditorUI>();
+    if (!m_editor_UI->Init()) return false;
 
     return true;
 }
@@ -50,10 +47,7 @@ void EditorUIRenderer::Render()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    for (auto& window_UI : m_window_UIs)
-    {
-        window_UI->Layout();
-    }
+    m_editor_UI->Layout();
     
     // Rendering
     ImGui::Render();
@@ -61,6 +55,16 @@ void EditorUIRenderer::Render()
     glViewport(0, 0, size[0], size[1]);
     glClear(GL_DEPTH_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void EditorUIRenderer::OnSelectedSceneObjectChange() const
+{
+    m_editor_UI->OnSelectedSceneObjectChange();
+}
+
+bool EditorUIRenderer::OnClose() const
+{
+    return m_editor_UI->OnClose();
 }
 
 EditorUIRenderer::~EditorUIRenderer()
