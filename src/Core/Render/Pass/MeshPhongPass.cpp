@@ -242,7 +242,7 @@ void MeshPhongPass::Render()
                     mesh_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
                     mesh_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
                     mesh_shader_program->SetUniform("uLightPos", light->GetPosition());
-                    mesh_shader_program->SetUniform("uLightColor", light->GetColor());
+                    mesh_shader_program->SetUniform("uLightColor", light->GetColor() * light->GetIntensity());
                     mesh_shader_program->SetUniform("uZNear", MainCamera::GetInstance().GetNearPlane());
                     mesh_shader_program->SetUniform("uZFar", MainCamera::GetInstance().GetFarPlane());
 

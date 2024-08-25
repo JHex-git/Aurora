@@ -57,7 +57,8 @@
             <Scale X="1" Y="1" Z="1"/>
         </Transform>
         <LightComponent>
-            <Color r="2.8" g="0" b="0"/>
+            <Color R="1" G="0" B="0"/>
+            <Intensity Value="2.23"/>
         </LightComponent>
     </SceneObject>
     <SceneObject Name="green_Light">
@@ -67,7 +68,8 @@
             <Scale X="1" Y="1" Z="1"/>
         </Transform>
         <LightComponent>
-            <Color r="0" g="3.5" b="0"/>
+            <Color R="0" G="1" B="0"/>
+            <Intensity Value="2.8"/>
         </LightComponent>
     </SceneObject>
     <SceneObject Name="backpack">

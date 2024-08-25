@@ -31,10 +31,14 @@ public:
         else return glm::vec3();
     }
     glm::vec3 GetColor() const { return m_color; }
+    float GetIntensity() const { return m_intensity; }
 
 private:
     REFLECTABLE_DECLARE(Light, m_color)
     glm::vec3 m_color = glm::vec3(1.0f);
+
+    REFLECTABLE_DECLARE(Light, m_intensity)
+    float m_intensity = 1.0f;
     
     static constexpr LightID INVALID_LIGHT_ID = 0;
     LightID m_light_id = INVALID_LIGHT_ID;

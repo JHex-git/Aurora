@@ -10,23 +10,14 @@
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
 #include "Editor/EditorUI.h"
+#include "Editor/LightComponentUI.h"
+#include "Editor/DrawUtils.h"
 #include "Core/Render/RenderSystem.h"
 #include "Runtime/Scene/SceneManager.h"
 #include "Utility/FileSystem.h"
 
 namespace Aurora
 {
-
-void DrawTextBackground(const std::string& text, const ImVec4& color)
-{
-    ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
-    ImVec2 beginPos = ImGui::GetCursorScreenPos();
-    beginPos.x -= ImGui::GetStyle().FramePadding.x;
-    ImVec2 endPos = ImVec2(beginPos.x + textSize.x + ImGui::GetStyle().FramePadding.x * 2, beginPos.y + ImGui::GetTextLineHeight() + ImGui::GetStyle().FramePadding.y * 2);
-    ImRect bb(beginPos, endPos);
-    ImGui::GetWindowDrawList()->AddRectFilled(bb.Min, bb.Max, ImGui::GetColorU32(color));
-    ImGui::Text(text.c_str());
-}
 
 bool EditorUI::Init()
 {
@@ -48,6 +39,8 @@ bool EditorUI::Init()
     colors[ImGuiCol_ButtonHovered]         = ImVec4(100.0f / 255.0f, 100.0f / 255.0f, 100.0f / 255.0f, 1.00f);
 
     InitDialogs();
+    InitComponentFieldLayouter();
+    InitComponentLayouter();
     return true;
 }
 
@@ -201,6 +194,126 @@ void EditorUI::InitDialogs()
             }
         }
     };
+}
+
+void EditorUI::InitComponentFieldLayouter()
+{
+    // TODO: add supported field
+    m_component_field_layouter["std::string"] = [](const std::string& field_name, std::shared_ptr<Component> component) {
+        ImGui::Text(component->GetField<std::string>(field_name).c_str());
+    };
+
+    m_component_field_layouter["glm::vec3"] = [](const std::string& field_name, std::shared_ptr<Component> component) {
+        ImGui::PushID(field_name.c_str());
+        const auto old_vec3 = component->GetField<glm::vec3>(field_name.c_str());
+        glm::vec3 vec3 = old_vec3;
+        ImGuiTableFlags table_flags = ImGuiTableFlags_None;
+        ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
+        if (ImGui::BeginTable("##vec3", 3, table_flags))
+        {
+            ImGui::TableNextColumn();
+            // Get the size of the text
+            ImVec2 textSize = ImGui::CalcTextSize("z");
+            DrawUtils::DrawTextBackground("x", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
+            ImGui::SameLine();
+            ImGui::DragFloat("##x", &vec3.x, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
+            ImGui::TableNextColumn();
+            DrawUtils::DrawTextBackground("y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
+            ImGui::SameLine();
+            ImGui::DragFloat("##y", &vec3.y, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
+            ImGui::TableNextColumn();
+            DrawUtils::DrawTextBackground("z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
+            ImGui::SameLine();
+            ImGui::DragFloat("##z", &vec3.z, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
+            ImGui::EndTable();
+
+            if (vec3 != old_vec3)
+            {
+                component->SetField(field_name.c_str(), vec3);
+                SceneManager::GetInstance().GetScene()->SetDirty();
+            }
+        }
+        ImGui::PopID();
+    };
+
+    m_component_field_layouter["glm::quat"] = [](const std::string& field_name, std::shared_ptr<Component> component) {
+        // FIXME: multiple member value change caused by precision
+        ImGui::PushID(field_name.c_str());
+        const auto old_quat = component->GetField<glm::quat>(field_name.c_str());
+        auto angle = glm::eulerAngles(old_quat);// radius
+        angle = glm::degrees(angle); // degree
+        ImGuiTableFlags table_flags = ImGuiTableFlags_None;
+        ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
+        if (ImGui::BeginTable("##quat", 3, table_flags))
+        {
+            ImGui::TableNextColumn();
+            DrawUtils::DrawTextBackground("x", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
+            ImGui::SameLine();
+            ImGui::DragFloat("##x", &angle.x, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
+            ImGui::TableNextColumn();
+            DrawUtils::DrawTextBackground("y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
+            ImGui::SameLine();
+            ImGui::DragFloat("##y", &angle.y, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
+            ImGui::TableNextColumn();
+            DrawUtils::DrawTextBackground("z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
+            ImGui::SameLine();
+            ImGui::DragFloat("##z", &angle.z, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
+            ImGui::EndTable();
+
+            const auto new_quat = glm::quat(glm::radians(angle));
+            if (glm::angle(glm::inverse(old_quat) * new_quat) > 1e-5f) // 0.01 radian threshold
+            {
+                component->SetField(field_name.c_str(), new_quat);
+                SceneManager::GetInstance().GetScene()->SetDirty();
+            }
+        }
+        ImGui::PopID();
+    };
+
+    m_component_field_layouter["float"] = [](const std::string& field_name, std::shared_ptr<Component> component) {
+        ImGui::PushID(field_name.c_str());
+        const auto old_float = component->GetField<float>(field_name.c_str());
+        float value = old_float;
+        if (ImGui::DragFloat("##float", &value, 0.01f))
+        {
+            if (value != old_float)
+            {
+                component->SetField(field_name.c_str(), value);
+                SceneManager::GetInstance().GetScene()->SetDirty();
+            }
+        }
+        ImGui::PopID();
+    };
+}
+
+void EditorUI::InitComponentLayouter()
+{
+    m_component_layouter["default"] = [this](const std::string& component_name, std::shared_ptr<Component> component, 
+                                            const std::map<std::string, FieldLayoutFunction>& default_field_layouter) {
+        std::string table_name = "##Table" + component_name;
+        if (ImGui::BeginTable(table_name.c_str(), 2))
+        {
+            const auto& fields = ReflectionFactory::GetInstance().GetFields(component_name);
+            for (auto& field : fields)
+            {
+
+                ImGui::TableNextColumn();
+                ImGui::Text(field.first.c_str());
+                ImGui::TableNextColumn();
+                std::string field_type = field.second.GetFieldType();
+
+                auto layouter = m_component_field_layouter.find(field_type);
+                if (layouter != m_component_field_layouter.end())
+                    layouter->second(field.first, component);
+                else
+                    spdlog::error("Unsupported field type {}", field_type.c_str());
+            }
+
+            ImGui::EndTable();
+        }
+    };
+
+    m_component_layouter["Light"] = LightComponentUI().Layout();
 }
 
 void EditorUI::Layout()
@@ -432,35 +545,11 @@ void EditorUI::ShowInspectorPanel()
 
                 if (ImGui::CollapsingHeader(component_name.c_str()))
                 {
-                    std::string table_name = "##Table" + component_name;
-                    if (ImGui::BeginTable(table_name.c_str(), 2))
+                    if (auto layout = m_component_layouter.find(component_name); layout != m_component_layouter.end())
+                        layout->second(component_name, component, m_component_field_layouter);
+                    else
                     {
-                        const auto& fields = ReflectionFactory::GetInstance().GetFields(component_name);
-                        for (auto& field : fields)
-                        {
-                            ImGui::TableNextColumn();
-                            ImGui::Text(field.first.c_str());
-                            ImGui::TableNextColumn();
-                            std::string field_type = field.second.GetFieldType();
-
-                            // TODO: add supported field
-                            if (field_type == "std::string")
-                                ImGui::Text(component->GetField<std::string>(field.first.c_str()).c_str());
-                            else if (field_type == "glm::vec3")
-                            {
-                                DrawVec3Control(field.first, component);
-                            }
-                            else if (field_type == "glm::quat")
-                            {
-                                DrawQuaternionControl(field.first, component);
-                            }
-                            else
-                            {
-                                spdlog::error("Unsupported field type {}", field_type.c_str());
-                            }
-                        }
-
-                        ImGui::EndTable();
+                        m_component_layouter["default"](component_name, component, m_component_field_layouter);
                     }
                 }
             }
@@ -504,75 +593,6 @@ void EditorUI::ShowFileContentPanel()
     }
     ImGui::Text("File Content Panel");
     ImGui::End();
-}
-
-void EditorUI::DrawVec3Control(const std::string& field_name, std::shared_ptr<Component> component)
-{
-    ImGui::PushID(field_name.c_str());
-    const auto old_vec3 = component->GetField<glm::vec3>(field_name.c_str());
-    glm::vec3 vec3 = old_vec3;
-    ImGuiTableFlags table_flags = ImGuiTableFlags_None;
-    ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
-    if (ImGui::BeginTable("##vec3", 3, table_flags))
-    {
-        ImGui::TableNextColumn();
-        // Get the size of the text
-        ImVec2 textSize = ImGui::CalcTextSize("z");
-        DrawTextBackground("x", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
-        ImGui::SameLine();
-        ImGui::DragFloat("##x", &vec3.x, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
-        ImGui::TableNextColumn();
-        DrawTextBackground("y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
-        ImGui::SameLine();
-        ImGui::DragFloat("##y", &vec3.y, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
-        ImGui::TableNextColumn();
-        DrawTextBackground("z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
-        ImGui::SameLine();
-        ImGui::DragFloat("##z", &vec3.z, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
-        ImGui::EndTable();
-
-        if (vec3 != old_vec3)
-        {
-            component->SetField(field_name.c_str(), vec3);
-            SceneManager::GetInstance().GetScene()->SetDirty();
-        }
-    }
-    ImGui::PopID();
-}
-
-void EditorUI::DrawQuaternionControl(const std::string& field_name, std::shared_ptr<Component> component)
-{
-    // FIXME: multiple member value change caused by precision
-    ImGui::PushID(field_name.c_str());
-    const auto old_quat = component->GetField<glm::quat>(field_name.c_str());
-    auto angle = glm::eulerAngles(old_quat);// radius
-    angle = glm::degrees(angle); // degree
-    ImGuiTableFlags table_flags = ImGuiTableFlags_None;
-    ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
-    if (ImGui::BeginTable("##quat", 3, table_flags))
-    {
-        ImGui::TableNextColumn();
-        DrawTextBackground("x", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
-        ImGui::SameLine();
-        ImGui::DragFloat("##x", &angle.x, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
-        ImGui::TableNextColumn();
-        DrawTextBackground("y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
-        ImGui::SameLine();
-        ImGui::DragFloat("##y", &angle.y, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
-        ImGui::TableNextColumn();
-        DrawTextBackground("z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
-        ImGui::SameLine();
-        ImGui::DragFloat("##z", &angle.z, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
-        ImGui::EndTable();
-
-        const auto new_quat = glm::quat(glm::radians(angle));
-        if (glm::angle(glm::inverse(old_quat) * new_quat) > 1e-5f) // 0.01 radian threshold
-        {
-            component->SetField(field_name.c_str(), new_quat);
-            SceneManager::GetInstance().GetScene()->SetDirty();
-        }
-    }
-    ImGui::PopID();
 }
 
 void EditorUI::DialogAction(bool& show_dialog, const std::function<void()>& confirm_action, const std::function<void()>& cancel_action)
