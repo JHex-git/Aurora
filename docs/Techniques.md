@@ -8,24 +8,26 @@ TODO
 
 ## Shadow Mapping
 
-对每个光源，从光源出发向PosX、NegX、PosY、NegY、PosZ、NegZ渲染场景深度，生成cubemap作为shadow map，这里需要注意opengl中cubemap的渲染方向（Opengl中垂直方向是颠倒的）。
+See from each point light source towards PosX、NegX、PosY、NegY、PosZ、NegZ to get the scene depth， use these depth texture to form a cubemap as shadow map. Note the up direction of cubemap rendering\(it's upside down in Opengl\)。
 
 ![image-20240817141044522](images/cubemap.png)
 
-在下一个pass中，采样场景中的点到目标光源的距离，与光源到该方向最近的遮挡物的距离进行对比。由于shadow map中存放的$z$是非线性深度，需要将它恢复成线性深度，并据此计算距离。
+In the subsequent rendering pass，calculate the distance between sample points and light source, and compare it with the nearest occluder distance of the light source recorded in shadow map. Because z in shadow map is not linear，a recovery is needed.
 
-由透视投影公式
+From the perspective projection formula
 
 $$
 zClip = \frac{far + near}{far - near} + \frac{1}{depth} * (\frac{-2\cdot far \cdot near}{far - near})
 $$
 
-可以推得
+the depth recovery formula can be derived as
 
 $$
 depth = \frac{far\cdot near}{far -z\cdot(far-near)}
 $$
 
-此外还需解决数据精度以及shadow map是离散的导致的自遮挡问题，引入了光照和法线的夹角作为 $\epsilon$ 的系数，并限定了 $\epsilon$ 最小值。
+The self-occlusion issue caused by precision and discrete shadow map should be care handled by introducing $\epsilon$ and using angle between light and normal as a factor.
 
 ![image-20240817142237975](images/self_shadow.png)
+
+For directional light, a 2D shadow map is enough. The shadow map is generated using orthographic projection with light source looking at its direction. But there are more things should pay attention to. As the shadow map is generated using orthographic projection, the frustum should be large enough to cover the whole scene viewed from the camera. But as the resolution of shadow map is limited, too large frustum will cause low quality shadow and even missing shadow for small objects that fail to occupy a pixel in shadow map when rasterized. So a cascaded shadow map(CSM) strategy should be introduced, which has not been implemented yet.

@@ -11,6 +11,7 @@
 // Aurora include
 #include "Editor/EditorUI.h"
 #include "Editor/LightComponentUI.h"
+#include "Editor/TransformUI.h"
 #include "Editor/DrawUtils.h"
 #include "Core/Render/RenderSystem.h"
 #include "Runtime/Scene/SceneManager.h"
@@ -212,17 +213,16 @@ void EditorUI::InitComponentFieldLayouter()
         if (ImGui::BeginTable("##vec3", 3, table_flags))
         {
             ImGui::TableNextColumn();
-            // Get the size of the text
-            ImVec2 textSize = ImGui::CalcTextSize("z");
-            DrawUtils::DrawTextBackground("x", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
+            ImGui::AlignTextToFramePadding();
+            DrawUtils::DrawTextBackground("X", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
             ImGui::SameLine();
             ImGui::DragFloat("##x", &vec3.x, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
             ImGui::TableNextColumn();
-            DrawUtils::DrawTextBackground("y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
+            DrawUtils::DrawTextBackground("Y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
             ImGui::SameLine();
             ImGui::DragFloat("##y", &vec3.y, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
             ImGui::TableNextColumn();
-            DrawUtils::DrawTextBackground("z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
+            DrawUtils::DrawTextBackground("Z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
             ImGui::SameLine();
             ImGui::DragFloat("##z", &vec3.z, 0.1f, -FLT_MAX, FLT_MAX, "%.2f", drag_float_flags);
             ImGui::EndTable();
@@ -314,6 +314,7 @@ void EditorUI::InitComponentLayouter()
     };
 
     m_component_layouter["Light"] = LightComponentUI().Layout();
+    m_component_layouter["Transform"] = TransformUI().Layout();
 }
 
 void EditorUI::Layout()
@@ -411,9 +412,19 @@ void EditorUI::ShowMainPanel()
             {
                 SceneManager::GetInstance().GetScene()->CreateEmptySceneObject();
             }
-            if (ImGui::MenuItem("New Light", nullptr, nullptr, has_scene))
+
+            if (ImGui::BeginMenu("New Light", has_scene))
             {
-                SceneManager::GetInstance().GetScene()->AddLight();
+                if (ImGui::MenuItem("Point Light"))
+                {
+                    SceneManager::GetInstance().GetScene()->AddPointLight();
+                }
+                if (ImGui::MenuItem("Directional Light"))
+                {
+                    SceneManager::GetInstance().GetScene()->AddDirectionalLight();
+                }
+
+                ImGui::EndMenu();
             }
 
             if (ImGui::BeginMenu("Load Mesh", has_scene))

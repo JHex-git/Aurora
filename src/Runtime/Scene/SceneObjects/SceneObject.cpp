@@ -4,10 +4,8 @@
 
 // Aurora include
 #include "Runtime/Scene/SceneObjects/SceneObject.h"
-#include "Runtime/Scene/Components/MeshRenderer.h"
-#include "Runtime/Scene/Components/SkyboxRenderer.h"
-#include "Runtime/Scene/Components/Light.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "Runtime/Scene/Components/ComponentFactory.h"
 
 namespace Aurora
 {
@@ -69,16 +67,7 @@ void SceneObject::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<
             }
             else
             {
-                std::shared_ptr<Component> component_ptr;
-                // TODO: Add Component here
-                if (!strcmp(p_child->Name(), "MeshRendererComponent")) component_ptr = std::make_shared<MeshRenderer>();
-                else if (!strcmp(p_child->Name(), "SkyboxRendererComponent")) component_ptr = std::make_shared<SkyboxRenderer>();
-                else if (!strcmp(p_child->Name(), "LightComponent")) component_ptr = std::make_shared<Light>();
-                else
-                {
-                    spdlog::error("Unknown component {}.", p_child->Name());
-                }
-
+                std::shared_ptr<Component> component_ptr = ComponentFactory::GetInstance().Create(p_child->Name());
                 if (component_ptr != nullptr) 
                 {
                     component_ptr->Deserialize(p_child, shared_from_this());

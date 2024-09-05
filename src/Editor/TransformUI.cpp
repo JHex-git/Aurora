@@ -1,20 +1,18 @@
 // std include
-#include <string>
-#include <map>
-#include <memory>
+
 // thirdparty include
 #include "thirdparty/imgui/imgui.h"
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 #include "thirdparty/opengl/glm/glm/glm.hpp"
 // Aurora include
-#include "Editor/LightComponentUI.h"
-#include "Editor/DrawUtils.h"
+#include "Editor/TransformUI.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "Editor/DrawUtils.h"
 
 namespace Aurora
 {
 
-ComponentLayoutFunction LightComponentUI::Layout()
+ComponentLayoutFunction TransformUI::Layout()
 {
     return [](const std::string& component_name,
               std::shared_ptr<Component> component, 
@@ -31,54 +29,37 @@ ComponentLayoutFunction LightComponentUI::Layout()
                 ImGui::TableNextColumn();
                 std::string field_type = field.second.GetFieldType();
 
-                std::string color_field_name = "m_color";
-                std::string intensity_field_name = "m_intensity";
-                if (field.first == color_field_name)
+                std::string rotation_field_name = "m_rotation";
+                if (field.first == rotation_field_name)
                 {
-                    ImGui::PushID("m_color");
-                    const auto old_vec3 = component->GetField<glm::vec3>(color_field_name.c_str());
+                    ImGui::PushID(rotation_field_name.c_str());
+                    const auto old_vec3 = component->GetField<glm::vec3>(rotation_field_name.c_str());
                     glm::vec3 vec3 = old_vec3;
                     ImGuiTableFlags table_flags = ImGuiTableFlags_None;
                     ImGuiSliderFlags drag_float_flags = ImGuiSliderFlags_AlwaysClamp;
-                    if (ImGui::BeginTable("##vec3", 4, table_flags))
+                    if (ImGui::BeginTable("##vec3", 3, table_flags))
                     {
-                        ImGui::TableNextColumn();
-                        // visualize light color
-                        DrawUtils::DrawRectNoPadding(ImVec4(vec3.x, vec3.y, vec3.z, 1.0f));
-
                         // draw color sliders
                         ImGui::TableNextColumn();
                         ImGui::AlignTextToFramePadding();
-                        DrawUtils::DrawTextBackground("R", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
+                        DrawUtils::DrawTextBackground("X", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
                         ImGui::SameLine();
-                        ImGui::DragFloat("##r", &vec3.x, 0.01f, 0, 1, "%.2f", drag_float_flags);
+                        ImGui::DragFloat("##x", &vec3.x, 0.01f, -90.f, 90.f, "%.2f", drag_float_flags);
                         ImGui::TableNextColumn();
-                        DrawUtils::DrawTextBackground("G", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
+                        DrawUtils::DrawTextBackground("Y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
                         ImGui::SameLine();
-                        ImGui::DragFloat("##g", &vec3.y, 0.01f, 0, 1, "%.2f", drag_float_flags);
+                        ImGui::DragFloat("##y", &vec3.y, 0.01f, -180.f, 180.f, "%.2f", drag_float_flags);
                         ImGui::TableNextColumn();
-                        DrawUtils::DrawTextBackground("B", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
+                        DrawUtils::DrawTextBackground("Z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
                         ImGui::SameLine();
-                        ImGui::DragFloat("##b", &vec3.z, 0.01f, 0, 1, "%.2f", drag_float_flags);
+                        ImGui::DragFloat("##z", &vec3.z, 0.01f, -180.f, 180.f, "%.2f", drag_float_flags);
                         ImGui::EndTable();
 
                         if (vec3 != old_vec3)
                         {
-                            component->SetField(color_field_name.c_str(), vec3);
+                            component->SetField(rotation_field_name.c_str(), vec3);
                             SceneManager::GetInstance().GetScene()->SetDirty();
                         }
-                    }
-                    ImGui::PopID();
-                }
-                else if (field.first == intensity_field_name)
-                {
-                    ImGui::PushID("m_intensity");
-                    const auto old_float = component->GetField<float>(intensity_field_name.c_str());
-                    float intensity = old_float;
-                    if (ImGui::DragFloat("##m_intensity", &intensity, 0.01f, 0, 1000, "%.2f"))
-                    {
-                        component->SetField(intensity_field_name.c_str(), intensity);
-                        SceneManager::GetInstance().GetScene()->SetDirty();
                     }
                     ImGui::PopID();
                 }

@@ -42,11 +42,15 @@ bool MeshPhongPass::Init(const std::array<int, 2>& viewport_size)
     if (!shading_fbo.has_value()) return false;
     m_shading_fbo = std::make_shared<FrameBufferObject>(std::move(shading_fbo.value()));
 
-    auto shadow_map_fbo = FrameBufferObjectBuilder(1024, 1024).EnableDepthAttachment({.type = Texture::Type::Cubemap}).Create();
-    if (!shadow_map_fbo.has_value()) return false;
-    m_shadow_map_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_map_fbo.value()));
+    auto shadow_cubemap_fbo = FrameBufferObjectBuilder(1024, 1024).EnableDepthAttachment({.type = Texture::Type::Cubemap}).Create();
+    if (!shadow_cubemap_fbo.has_value()) return false;
+    m_shadow_cubemap_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_cubemap_fbo.value()));
 
-    // shader program with texture
+    auto shadow_2Dmap_fbo = FrameBufferObjectBuilder(1024, 1024).EnableDepthAttachment({.type = Texture::Type::Texture2D}).Create();
+    if (!shadow_2Dmap_fbo.has_value()) return false;
+    m_shadow_2Dmap_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_2Dmap_fbo.value()));
+
+    // shader program with texture for point light
     {
         std::vector<Shader> shaders;
         shaders.emplace_back(ShaderType::VertexShader);
@@ -61,20 +65,21 @@ bool MeshPhongPass::Init(const std::array<int, 2>& viewport_size)
         shaders.emplace_back(ShaderType::FragmentShader);
         auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
         shaders[1].SetFlag("ENABLE_TEXCOORDS");
+        shaders[1].SetFlag("POINT_LIGHT");
         if (!shaders[1].Load(frag_path))
         {
             spdlog::error("Failed to load fragment shader {}", frag_path);
             return false;
         }
-        m_tex_shader_program = std::make_unique<ShaderProgram>();
-        if (!m_tex_shader_program->Load(shaders))
+        m_point_light_tex_shader_program = std::make_unique<ShaderProgram>();
+        if (!m_point_light_tex_shader_program->Load(shaders))
         {
             spdlog::error("Failed to load shader program");
             return false;
         }
     }
 
-    // shader program without texture
+    // shader program without texture for point light
     {
         std::vector<Shader> shaders;
         shaders.emplace_back(ShaderType::VertexShader);
@@ -87,13 +92,70 @@ bool MeshPhongPass::Init(const std::array<int, 2>& viewport_size)
         }
         shaders.emplace_back(ShaderType::FragmentShader);
         auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
+        shaders[1].SetFlag("POINT_LIGHT");
         if (!shaders[1].Load(frag_path))
         {
             spdlog::error("Failed to load fragment shader {}", frag_path);
             return false;
         }
-        m_no_tex_shader_program = std::make_unique<ShaderProgram>();
-        if (!m_no_tex_shader_program->Load(shaders))
+        m_point_light_no_tex_shader_program = std::make_unique<ShaderProgram>();
+        if (!m_point_light_no_tex_shader_program->Load(shaders))
+        {
+            spdlog::error("Failed to load shader program");
+            return false;
+        }
+    }
+
+    // shader program with texture for directional light
+    {
+        std::vector<Shader> shaders;
+        shaders.emplace_back(ShaderType::VertexShader);
+        auto vert_path = FileSystem::GetFullPath("shaders/mesh.vert");
+        shaders[0].SetFlag("ENABLE_NORMALS");
+        shaders[0].SetFlag("ENABLE_TEXCOORDS");
+        if (!shaders[0].Load(vert_path))
+        {
+            spdlog::error("Failed to load vertex shader {}", vert_path);
+            return false;
+        }
+        shaders.emplace_back(ShaderType::FragmentShader);
+        auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
+        shaders[1].SetFlag("ENABLE_TEXCOORDS");
+        shaders[1].SetFlag("DIRECTIONAL_LIGHT");
+        if (!shaders[1].Load(frag_path))
+        {
+            spdlog::error("Failed to load fragment shader {}", frag_path);
+            return false;
+        }
+        m_directional_light_tex_shader_program = std::make_unique<ShaderProgram>();
+        if (!m_directional_light_tex_shader_program->Load(shaders))
+        {
+            spdlog::error("Failed to load shader program");
+            return false;
+        }
+    }
+
+    // shader program without texture for point light
+    {
+        std::vector<Shader> shaders;
+        shaders.emplace_back(ShaderType::VertexShader);
+        auto vert_path = FileSystem::GetFullPath("shaders/mesh.vert");
+        shaders[0].SetFlag("ENABLE_NORMALS");
+        if (!shaders[0].Load(vert_path))
+        {
+            spdlog::error("Failed to load vertex shader {}", vert_path);
+            return false;
+        }
+        shaders.emplace_back(ShaderType::FragmentShader);
+        auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
+        shaders[1].SetFlag("DIRECTIONAL_LIGHT");
+        if (!shaders[1].Load(frag_path))
+        {
+            spdlog::error("Failed to load fragment shader {}", frag_path);
+            return false;
+        }
+        m_directional_light_no_tex_shader_program = std::make_unique<ShaderProgram>();
+        if (!m_directional_light_no_tex_shader_program->Load(shaders))
         {
             spdlog::error("Failed to load shader program");
             return false;
@@ -158,7 +220,16 @@ void MeshPhongPass::Render()
     m_fbo->Bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    if (m_tex_shader_program != nullptr && m_no_tex_shader_program != nullptr)
+    const auto near_plane = MainCamera::GetInstance().GetNearPlane();
+    const auto far_plane = MainCamera::GetInstance().GetFarPlane();
+    const auto perception = 10.f;
+    const auto perspective = glm::perspective(glm::radians(90.f), 1.f, near_plane, far_plane);
+    const auto ortho_far_plane = far_plane;
+    const auto ortho_near_plane = -far_plane;
+    const auto ortho = glm::ortho(-perception, perception, -perception, perception, ortho_near_plane, ortho_far_plane);
+    glm::mat<4, 4, float> ortho_view;
+
+    if (m_point_light_tex_shader_program != nullptr && m_point_light_no_tex_shader_program != nullptr)
     {
         glEnable(GL_DEPTH_TEST);
 
@@ -173,11 +244,31 @@ void MeshPhongPass::Render()
             const auto light_owner = light->GetOwner().lock();
             SCOPED_RENDER_EVENT(light_owner ? light_owner->GetName() : "light");
 
-            m_shadow_map_fbo->Bind();
-            for (auto i = 0; i < k_dirs.size(); ++i)
+            const auto light_type = light->GetType();
+            ShaderProgram* tex_shader_program = nullptr;
+            ShaderProgram* no_tex_shader_program = nullptr;
+            if (light_type == Light::Type::Point)
             {
-                m_shadow_map_fbo->BindDepthCubemapFace(i);
+                m_shadow_cubemap_fbo->Bind();
+                for (auto i = 0; i < k_dirs.size(); ++i)
+                {
+                    m_shadow_cubemap_fbo->BindDepthCubemapFace(i);
+                    glClear(GL_DEPTH_BUFFER_BIT);
+                }
+                tex_shader_program = m_point_light_tex_shader_program.get();
+                no_tex_shader_program = m_point_light_no_tex_shader_program.get();
+            }
+            else if (light_type == Light::Type::Directional)
+            {
+                m_shadow_2Dmap_fbo->Bind();
                 glClear(GL_DEPTH_BUFFER_BIT);
+                tex_shader_program = m_directional_light_tex_shader_program.get();
+                no_tex_shader_program = m_directional_light_no_tex_shader_program.get();
+            }
+            else
+            {
+                spdlog::error("Unsupported light type {}", Light::TypeToCString(light_type));
+                continue;
             }
 
             m_shading_fbo->Bind();
@@ -187,10 +278,26 @@ void MeshPhongPass::Render()
             {
                 SCOPED_RENDER_EVENT("Shadow Pass");
 
-                m_shadow_map_fbo->Bind();
                 m_shadow_map_shader_program->Bind();
-                m_shadow_map_shader_program->SetUniform("uProjection", 
-                    glm::perspective(glm::radians(90.f), 1.f, MainCamera::GetInstance().GetNearPlane(), MainCamera::GetInstance().GetFarPlane()));
+                if (light_type == Light::Type::Point)
+                {
+                    m_shadow_cubemap_fbo->Bind();
+                    m_shadow_map_shader_program->SetUniform("uProjection", perspective);
+                }
+                else if (light_type == Light::Type::Directional)
+                {
+                    m_shadow_2Dmap_fbo->Bind();
+                    m_shadow_map_shader_program->SetUniform("uProjection", ortho);
+                    const auto light_dir = light->GetDirection();
+                    glm::vec3 up_dir;
+                    if (abs(glm::dot(light_dir, glm::vec3(0.f, 1.f, 0.f))) > 0.999f) // avoid up vector parallel to light direction
+                        up_dir = glm::vec3(0.f, 0.f, 1.f);
+                    else
+                        up_dir = glm::normalize(glm::cross(glm::cross(light_dir, glm::vec3(0.f, 1.f, 0.f)), light_dir));
+                    ortho_view = glm::lookAt(light->GetPosition(), light->GetPosition() + light_dir, up_dir);
+                    m_shadow_map_shader_program->SetUniform("uView", ortho_view);
+                }
+
                 for (auto& p_material : m_mesh_render_materials)
                 {
                     auto material = p_material.second.lock();
@@ -211,11 +318,20 @@ void MeshPhongPass::Render()
 
                         material->m_vbos[i]->Bind();
                         material->m_ebos[i]->Bind();
-                        // render shadow map for each face of the cubemap
-                        for (auto j = 0; j < k_dirs.size(); ++j)
+
+                        if (light_type == Light::Type::Point)
                         {
-                            m_shadow_map_shader_program->SetUniform("uView", glm::lookAt(light->GetPosition(), light->GetPosition() + k_dirs[j], k_ups[j]));
-                            m_shadow_map_fbo->BindDepthCubemapFace(j);
+                            // render shadow map for each face of the cubemap
+                            for (auto j = 0; j < k_dirs.size(); ++j)
+                            {
+                                m_shadow_map_shader_program->SetUniform("uView", glm::lookAt(light->GetPosition(), light->GetPosition() + k_dirs[j], k_ups[j]));
+                                m_shadow_cubemap_fbo->BindDepthCubemapFace(j);
+                                glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
+                            }
+                        }
+                        else if (light_type == Light::Type::Directional)
+                        {
+                            m_shadow_2Dmap_fbo->Bind();
                             glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
                         }
                         material->m_ebos[i]->Unbind();
@@ -234,7 +350,7 @@ void MeshPhongPass::Render()
                     auto material = p_material.second.lock();
                     if (!material) continue;
 
-                    auto mesh_shader_program = material->m_mesh->HasTextures() ? m_tex_shader_program.get() : m_no_tex_shader_program.get();
+                    auto mesh_shader_program = material->m_mesh->HasTextures() ? tex_shader_program : no_tex_shader_program;
                     mesh_shader_program->Bind();
                     const glm::mat4 model = material->GetModelMatrix();
                     mesh_shader_program->SetUniform("uModel", model);
@@ -242,9 +358,19 @@ void MeshPhongPass::Render()
                     mesh_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
                     mesh_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
                     mesh_shader_program->SetUniform("uLightPos", light->GetPosition());
-                    mesh_shader_program->SetUniform("uLightColor", light->GetColor() * light->GetIntensity());
-                    mesh_shader_program->SetUniform("uZNear", MainCamera::GetInstance().GetNearPlane());
-                    mesh_shader_program->SetUniform("uZFar", MainCamera::GetInstance().GetFarPlane());
+                    mesh_shader_program->SetUniform("uLightColor", light->GetColor());
+                    mesh_shader_program->SetUniform("uLightIntensity", light->GetIntensity());
+                    if (light_type == Light::Type::Point)
+                    {
+                        mesh_shader_program->SetUniform("uZNear", MainCamera::GetInstance().GetNearPlane());
+                        mesh_shader_program->SetUniform("uZFar", MainCamera::GetInstance().GetFarPlane());
+                    }
+                    else if (light_type == Light::Type::Directional)
+                    {
+                        mesh_shader_program->SetUniform("uLightDirection", light->GetDirection());
+                        mesh_shader_program->SetUniform("uOrthoVP", ortho * ortho_view);
+                        mesh_shader_program->SetUniform("uNearFarNorm", ortho_far_plane - ortho_near_plane);
+                    }
 
                     for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
                     {
@@ -273,7 +399,14 @@ void MeshPhongPass::Render()
                         }
 
                         // use shadow map to decide the light contribution
-                        m_shadow_map_fbo->BindDepthTexture(current_unit++);
+                        if (light_type == Light::Type::Point)
+                        {
+                            m_shadow_cubemap_fbo->BindDepthTexture(current_unit++);
+                        }
+                        else if (light_type == Light::Type::Directional)
+                        {
+                            m_shadow_2Dmap_fbo->BindDepthTexture(current_unit++);
+                        }
                         mesh_shader_program->SetUniform("uTexShadowMap", current_unit - 1);
                         glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
                         material->m_ebos[i]->Unbind();

@@ -8,7 +8,7 @@
 namespace Aurora
 {
 REFLECTABLE_IMPL(Transform, m_position, glm::vec3)
-REFLECTABLE_IMPL(Transform, m_rotation, glm::quat)
+REFLECTABLE_IMPL(Transform, m_rotation, glm::vec3)
 REFLECTABLE_IMPL(Transform, m_scale, glm::vec3)
 
 void Transform::Serialize(tinyxml2::XMLElement *node)
@@ -23,7 +23,6 @@ void Transform::Serialize(tinyxml2::XMLElement *node)
     rotation_node->SetAttribute("X", m_rotation.x);
     rotation_node->SetAttribute("Y", m_rotation.y);
     rotation_node->SetAttribute("Z", m_rotation.z);
-    rotation_node->SetAttribute("W", m_rotation.w);
 
     auto scale_node = node->InsertNewChildElement("Scale");
     scale_node->SetAttribute("X", m_scale.x);
@@ -42,7 +41,6 @@ void Transform::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<Sc
     node->FirstChildElement("Rotation")->QueryFloatAttribute("X", &m_rotation.x);
     node->FirstChildElement("Rotation")->QueryFloatAttribute("Y", &m_rotation.y);
     node->FirstChildElement("Rotation")->QueryFloatAttribute("Z", &m_rotation.z);
-    node->FirstChildElement("Rotation")->QueryFloatAttribute("W", &m_rotation.w);
 
     node->FirstChildElement("Scale")->QueryFloatAttribute("X", &m_scale.x);
     node->FirstChildElement("Scale")->QueryFloatAttribute("Y", &m_scale.y);

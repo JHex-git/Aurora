@@ -44,9 +44,16 @@ void Scene::AddSkybox(std::array<std::string, 6>&& skybox_paths)
     SetDirty();
 }
 
-void Scene::AddLight()
+void Scene::AddPointLight()
 {
-    m_scene_objects.push_back(SceneObjectFactory::CreateLight());
+    m_scene_objects.push_back(SceneObjectFactory::CreatePointLight());
+    SetSelectedSceneObject(m_scene_objects.back());
+    SetDirty();
+}
+
+void Scene::AddDirectionalLight()
+{
+    m_scene_objects.push_back(SceneObjectFactory::CreateDirectionalLight());
     SetSelectedSceneObject(m_scene_objects.back());
     SetDirty();
 }

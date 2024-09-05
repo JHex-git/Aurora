@@ -36,11 +36,22 @@ std::shared_ptr<SceneObject> SceneObjectFactory::CreateSkybox(std::array<std::st
     return std::move(scene_object);
 }
 
-std::shared_ptr<SceneObject> SceneObjectFactory::CreateLight()
+std::shared_ptr<SceneObject> SceneObjectFactory::CreatePointLight()
 {
-    auto scene_object = std::make_shared<SceneObject>("Light");
+    auto scene_object = std::make_shared<SceneObject>("PointLight");
 
-    auto light = std::make_shared<Light>(glm::vec3(1.0f));
+    auto light = std::make_shared<Light>(glm::vec3(1.0f), Light::Type::Point);
+    if (!light->Init(scene_object)) return nullptr;
+
+    scene_object->AddComponent(light);
+    return std::move(scene_object);
+}
+
+std::shared_ptr<SceneObject> SceneObjectFactory::CreateDirectionalLight()
+{
+    auto scene_object = std::make_shared<SceneObject>("DirectionalLight");
+
+    auto light = std::make_shared<Light>(glm::vec3(1.f), Light::Type::Directional);
     if (!light->Init(scene_object)) return nullptr;
 
     scene_object->AddComponent(light);

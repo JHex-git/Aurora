@@ -65,7 +65,8 @@ const glm::mat4 MeshRenderMaterial::GetModelMatrix() const
     auto transform = scene_object->GetTransform();
 
     glm::vec3 position = transform->GetField<glm::vec3>("m_position");
-    glm::quat rotation = transform->GetField<glm::quat>("m_rotation");
+    glm::vec3 rotation_euler_angle = transform->GetField<glm::vec3>("m_rotation");
+    glm::quat rotation = glm::quat(glm::radians(rotation_euler_angle));
     glm::vec3 scale = transform->GetField<glm::vec3>("m_scale");
     glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), position) * glm::mat4_cast(rotation) * glm::scale(glm::identity<glm::mat4>(), scale);
     return model;

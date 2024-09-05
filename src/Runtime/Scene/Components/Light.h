@@ -15,8 +15,32 @@ using LightID = unsigned int;
 class Light : public Component, public std::enable_shared_from_this<Light>
 {
 public:
-    Light(glm::vec3 color) : Component("Light"), m_color(color) { }
-    Light() : Light(glm::vec3(1.0f)) { }
+    enum class Type
+    {
+        Directional,
+        Point,
+        Unknown
+    };
+
+    static const char* TypeToCString(Type type)
+    {
+        switch (type)
+        {
+            case Type::Directional: return "Directional";
+            case Type::Point: return "Point";
+            default: return "Unknown";
+        }
+    }
+
+    static Type CStringToType(const char* type)
+    {
+        if (!strcmp(type,"Directional")) return Type::Directional;
+        else if (!strcmp(type, "Point")) return Type::Point;
+        else return Type::Unknown;
+    }
+
+    Light(glm::vec3 color, Type type) : Component("Light"), m_color(color), m_type(type) { }
+    Light() : Component("Light") { }
     virtual ~Light();
 
     virtual void Serialize(tinyxml2::XMLElement *node) override;
@@ -32,8 +56,11 @@ public:
     }
     glm::vec3 GetColor() const { return m_color; }
     float GetIntensity() const { return m_intensity; }
+    glm::vec3 GetDirection();
+    Type GetType() const { return m_type; }
 
 private:
+
     REFLECTABLE_DECLARE(Light, m_color)
     glm::vec3 m_color = glm::vec3(1.0f);
 
@@ -42,5 +69,7 @@ private:
     
     static constexpr LightID INVALID_LIGHT_ID = 0;
     LightID m_light_id = INVALID_LIGHT_ID;
+
+    Type m_type = Type::Point;
 };
 } // namespace Aurora

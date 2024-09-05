@@ -29,7 +29,8 @@ public:
     void LoadMesh(std::string file_path);
     void CreateEmptySceneObject();
     void AddSkybox(std::array<std::string, 6>&& skybox_paths);
-    void AddLight();
+    void AddPointLight();
+    void AddDirectionalLight();
 
     void SetSelectedSceneObject(std::shared_ptr<SceneObject> scene_object);
     void DeleteSelectedSceneObject();
