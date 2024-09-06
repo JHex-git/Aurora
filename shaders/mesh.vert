@@ -30,7 +30,7 @@ void main()
     gl_Position = uProjection * uView * positionWS;
     vsOut.FragPos = positionWS.xyz / positionWS.w;
 #ifdef ENABLE_NORMALS
-    vsOut.Normal = mat3(transpose(inverse(uModel))) * aNormal; // No matter this is normalized, fragment uses this should normalize it as it is interpolated
+    vsOut.Normal = normalize(transpose(inverse(mat3(uModel))) * aNormal);
 #endif
 #ifdef ENABLE_TEXCOORDS
     vsOut.TexCoords = aColorTexCoords;

@@ -72,7 +72,7 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<TextureID> textures;
-    auto normalMatrix = glm::transpose(glm::inverse(transform));
+    auto normalMatrix = glm::transpose(glm::inverse(glm::mat3(transform)));
     // process vertices
     for(unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
@@ -86,7 +86,7 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
 
         if (mesh->HasNormals())
         {
-            normal = glm::normalize(normalMatrix * glm::vec4(glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z), 0.0f));
+            normal = glm::normalize(normalMatrix * glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z));
         }
 
         if (mesh->HasTextureCoords(0))
