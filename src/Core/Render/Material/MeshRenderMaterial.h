@@ -17,14 +17,14 @@ using MeshRenderMaterialID = unsigned int;
 
 class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from_this<MeshRenderMaterial>
 {
-    friend class MeshPhongPass;
+    friend class ForwardRenderPass;
     friend class MeshOutlinePass;
     friend class SkyboxPass;
     friend class GizmosPass;
     
 public:
     MeshRenderMaterial(std::shared_ptr<Mesh> mesh) : RenderMaterial("MeshRenderMaterial"), m_mesh(mesh) { }
-    virtual ~MeshRenderMaterial();
+    virtual ~MeshRenderMaterial() = default;
 
     bool Init(std::shared_ptr<SceneObject> owner) override;
 

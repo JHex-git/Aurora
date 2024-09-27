@@ -12,6 +12,8 @@ namespace Aurora
 
 class MeshRenderer : public Component
 {
+    friend class Octree;
+    friend class BoundingVolumeHierarchy;
 public:
     MeshRenderer() : Component("MeshRenderer") { }
     ~MeshRenderer() = default;
@@ -24,6 +26,7 @@ public:
     bool LoadMesh(const std::string& path);
 
     inline std::shared_ptr<MeshRenderMaterial> GetRenderMaterial() const { return m_material; }
+    const AxisAlignedBoundingBox GetAABB() const { return m_mesh->GetAABB(); }
 
 private:
     std::shared_ptr<Mesh> m_mesh;

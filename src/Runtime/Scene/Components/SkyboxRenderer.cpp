@@ -52,6 +52,7 @@ void SkyboxRenderer::Deserialize(const tinyxml2::XMLElement *node, std::shared_p
                 }
                 m_material = std::make_shared<SkyboxRenderMaterial>(m_mesh);
                 m_material->Deserialize(p_child, owner);
+                m_mesh->SetRenderProxy(m_material);
             }
             else spdlog::error("Unknown material type {} in SkyboxRendererComponent.", type);
         }
@@ -76,5 +77,6 @@ void SkyboxRenderer::Load(std::array<std::string, 6>&& paths)
     m_material = std::make_shared<SkyboxRenderMaterial>(m_mesh);
     m_material->Init(m_scene_object.lock());
     m_material->Load(std::move(paths));
+    m_mesh->SetRenderProxy(m_material);
 }
 } // namespace Aurora

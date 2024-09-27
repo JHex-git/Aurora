@@ -16,6 +16,7 @@
 #include "Core/Render/RenderSystem.h"
 #include "Runtime/Scene/SceneManager.h"
 #include "Utility/FileSystem.h"
+#include "Runtime/GlobalContext.h"
 
 namespace Aurora
 {
@@ -450,6 +451,12 @@ void EditorUI::ShowMainPanel()
             {
                 m_show_skybox_dialog = true;
             }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Debug"))
+        {
+            ImGui::MenuItem("Show Spatial Hierarchy", nullptr, &GlobalContext::GetInstance().draw_spatial_hierarchy);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();

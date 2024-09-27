@@ -16,12 +16,6 @@
 namespace Aurora
 {
 
-MeshRenderMaterial::~MeshRenderMaterial()
-{
-    if (m_material_id != INVALID_MESH_RENDER_MATERIAL_ID)
-        RenderSystem::GetInstance().UnregisterMeshRenderMaterial(m_material_id);
-}
-
 void MeshRenderMaterial::Serialize(tinyxml2::XMLElement *node)
 {
     node->SetName("Material");
@@ -50,10 +44,6 @@ bool MeshRenderMaterial::Init(std::shared_ptr<SceneObject> owner)
         m_ebos[i] = std::make_shared<ElementBuffer>();
         m_ebos[i]->LoadData(m_mesh->m_submeshes[i].m_indices, m_mesh->m_submeshes[i].m_indices.size());
     }
-
-    // render materials that are scene irrelevant should not be registered 
-    if (owner != SceneManager::GetInstance().GetDummySceneObject())
-        m_material_id = RenderSystem::GetInstance().RegisterMeshRenderMaterial(shared_from_this());
     
     return true;
 }
@@ -63,12 +53,6 @@ const glm::mat4 MeshRenderMaterial::GetModelMatrix() const
     auto scene_object = m_scene_object.lock();
     if (!scene_object) return glm::identity<glm::mat4>();
     auto transform = scene_object->GetTransform();
-
-    glm::vec3 position = transform->GetField<glm::vec3>("m_position");
-    glm::vec3 rotation_euler_angle = transform->GetField<glm::vec3>("m_rotation");
-    glm::quat rotation = glm::quat(glm::radians(rotation_euler_angle));
-    glm::vec3 scale = transform->GetField<glm::vec3>("m_scale");
-    glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), position) * glm::mat4_cast(rotation) * glm::scale(glm::identity<glm::mat4>(), scale);
-    return model;
+    return *transform;
 }
 } // namespace Aurora

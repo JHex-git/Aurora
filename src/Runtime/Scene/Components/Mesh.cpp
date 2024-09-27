@@ -9,14 +9,22 @@
 // Aurora include
 #include "Runtime/Scene/Components/Mesh.h"
 #include "Runtime/Scene/Components/SubMesh.h"
+#include "Runtime/Scene/SceneObjects/SceneObject.h"
 #include "glWrapper/Texture.h"
 #include "ExternalHelper/AssimpHelper.h"
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/TextureManager.h"
+#include "Core/Render/Material/MeshRenderMaterial.h"
+#include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
 {
 REFLECTABLE_IMPL(Mesh, m_path, std::string)
+
+Mesh::~Mesh()
+{
+    SceneManager::GetInstance().UnregisterMesh(m_id);
+}
 
 void Mesh::Serialize(tinyxml2::XMLElement* node)
 {
@@ -37,7 +45,7 @@ void Mesh::Update()
 bool Mesh::Load(const std::string& file_path)
 {
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(FileSystem::GetFullPath(file_path), aiProcess_Triangulate | aiProcess_FlipUVs);
+    const aiScene* scene = importer.ReadFile(FileSystem::GetFullPath(file_path), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenBoundingBoxes);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
         spdlog::error("Failed to load mesh: {}", importer.GetErrorString());
@@ -47,7 +55,19 @@ bool Mesh::Load(const std::string& file_path)
     m_path = file_path;
     ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f));
     spdlog::info("Mesh {} loaded successfully.", file_path);
+    
+    m_id = SceneManager::GetInstance().RegisterMesh(shared_from_this()); 
     return true;
+}
+
+const AxisAlignedBoundingBox Mesh::GetAABB() const
+{
+    if (auto scene_object = m_scene_object.lock())
+    {
+        auto model_transform = scene_object->GetTransform();
+        return glm::mat4(*model_transform) * m_local_aabb;
+    }
+    else return {};
 }
 
 void Mesh::ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4& parentTransform)
@@ -59,6 +79,10 @@ void Mesh::ProcessNode(const aiNode* node, const aiScene* scene, const glm::mat4
     {
         aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
         m_submeshes.push_back(ProcessMesh(mesh, scene, transform));
+
+        auto min_vertex = glm::vec3(mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z);
+        auto max_vertex = glm::vec3(mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z);
+        m_local_aabb |= transform * AxisAlignedBoundingBox(min_vertex, max_vertex);
     }
     // then do the same for each of its children
     for(unsigned int i = 0; i < node->mNumChildren; i++)

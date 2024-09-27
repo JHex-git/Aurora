@@ -5,7 +5,6 @@
 // thirdparty include
 
 // Aurora include
-#include "Core/Render/Pass/MeshPhongPass.h"
 #include "Core/Render/RenderPipeline.h"
 
 namespace Aurora
@@ -26,8 +25,6 @@ public:
     bool Init();
     void Render();
 
-    MeshRenderMaterialID RegisterMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material) { return m_render_pipeline->RegisterMeshRenderMaterial(mesh_render_material); }
-    void UnregisterMeshRenderMaterial(MeshRenderMaterialID id) { m_render_pipeline->UnregisterMeshRenderMaterial(id); }
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material) { m_render_pipeline->SetSkyboxRenderMaterial(skybox_render_material); }
     void UpdateViewInfo(ViewInfo&& view_info) { m_view_info = std::move(view_info); }
     std::array<int, 2> GetSize() const { return m_view_info.size; }
@@ -39,8 +36,6 @@ private:
     void OnMouseButtonCallback(int button, int action, int mods);
     void OnScrollCallback(double xoffset, double yoffset);
     void OnKeyCallback(int key, int scancode, int action, int mods);
-
-    void RenderViewUI();
 
 private:
     std::unique_ptr<RenderPipeline> m_render_pipeline;

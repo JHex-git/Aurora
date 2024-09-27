@@ -13,11 +13,6 @@ void DrawUtils::DrawTextBackground(const std::string& text, const ImVec4& color)
     ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
     ImVec2 beginPos = ImGui::GetCursorScreenPos();
     beginPos.x -= ImGui::GetStyle().FramePadding.x;
-    // TODO:
-    // spdlog::error("ImGui::GetCursorScreenPos() = ({}, {})", beginPos.x, beginPos.y);
-    // ImGui::GetStyle().FramePadding.x = 100;
-    // spdlog::error("ImGui::GetCursorScreenPos() = ({}, {})", ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y);
-    // beginPos.x -= ImGui::GetStyle().FramePadding.x;
     
     ImVec2 endPos = ImVec2(beginPos.x + textSize.x + ImGui::GetStyle().FramePadding.x * 2, beginPos.y + ImGui::GetTextLineHeight() + ImGui::GetStyle().FramePadding.y * 2);
     ImRect bb(beginPos, endPos);

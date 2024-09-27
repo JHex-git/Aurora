@@ -37,6 +37,7 @@ add_subdirectory(thirdparty)
 add_definitions(-DPROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 add_subdirectory(src/ExternalHelper)
+add_subdirectory(src/Math)
 add_subdirectory(src/Core)
 add_subdirectory(src/Editor)
 add_subdirectory(src/Runtime)

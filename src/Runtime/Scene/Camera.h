@@ -9,6 +9,8 @@
 
 namespace Aurora
 {
+class AxisAlignedBoundingBox;
+class ViewFrustum;
 
 class Camera
 {
@@ -41,8 +43,6 @@ public:
 
 protected:
     glm::mat4 m_projection_mat;
-
-private:
     glm::vec3 m_direction;
     glm::vec3 m_up;
     glm::vec3 m_right;
@@ -54,10 +54,16 @@ private:
 class PerspectiveCamera : public Camera
 {
 public:
-    PerspectiveCamera(glm::vec3 position = glm::vec3(0.f, 0.f, 3.f), glm::vec3 direction = glm::vec3(0.f, 0.f, -1.f), glm::vec3 up = glm::vec3(0.f, 1.f, 0.f), float fov = 45.f, float aspect = 800.f / 600.f, float near_plane = 0.1f, float far_plane = 1000.f) : Camera(position, direction, up, near_plane, far_plane)
+    PerspectiveCamera(glm::vec3 position = glm::vec3(0.f, 0.f, 3.f), glm::vec3 direction = glm::vec3(0.f, 0.f, -1.f), glm::vec3 up = glm::vec3(0.f, 1.f, 0.f), float fov = 45.f, float aspect = 800.f / 600.f, float near_plane = 0.1f, float far_plane = 1000.f) : Camera(position, direction, up, near_plane, far_plane), m_fov(fov), m_aspect_ratio(aspect)
     {
         m_projection_mat = glm::perspective(glm::radians(fov), aspect, near_plane, far_plane);
     }
+
+    float GetFov() const { return m_fov; }
+    float GetAspectRatio() const { return m_aspect_ratio; }
+private:
+    float m_fov; // vertical field of view in degrees
+    float m_aspect_ratio;
 };
 
 class OrthographicCamera : public Camera
@@ -87,46 +93,25 @@ public:
     inline glm::vec3 GetPosition() const { return m_camera->m_position; }
     inline float GetNearPlane() const { return m_camera->GetNearPlane(); }
     inline float GetFarPlane() const { return m_camera->GetFarPlane(); }
+    float GetForwardSpeed() const { return m_forward_speed; }
 
     // 前后移动
-    void Dolly(bool is_forward)
-    {
-        if (is_forward)
-            m_camera->m_position += m_camera->GetDirection() * m_forward_speed;
-        else
-            m_camera->m_position -= m_camera->GetDirection() * m_forward_speed;
-    }
+    void Dolly(bool is_forward);
 
     // 左右移动
-    void Pan(bool is_right)
-    {
-        if (is_right)
-            m_camera->m_position += m_camera->GetRight() * m_horizontal_speed;
-        else
-            m_camera->m_position -= m_camera->GetRight() * m_horizontal_speed;
-    }
+    void Pan(bool is_right);
 
     // 垂直移动
-    void Tilt(float yoffset)
-    {
-        constexpr float sensitivity = 0.001f;
-        m_camera->m_position += m_camera->GetUp() * yoffset * sensitivity;
-    }
+    void Tilt(float yoffset);
 
-    void Rotate(float xoffset, float yoffset)
-    {
-        constexpr float sensitivity = 0.0005f;
-        m_camera->SetDirection(m_camera->GetDirection() + m_camera->GetRight() * xoffset * sensitivity + m_camera->GetUp() * yoffset * sensitivity);
-    }
+    void Rotate(float xoffset, float yoffset);
 
-    void AdjustForwardSpeed(float yoffset) 
-    {
-        constexpr float sensitivity = 0.01f;
-        float speed = m_forward_speed + yoffset * sensitivity;
-        if (speed >= min_forward_speed && speed <= max_forward_speed) m_forward_speed = speed;
-    }
+    void AdjustForwardSpeed(float yoffset);
 
-    float GetForwardSpeed() const { return m_forward_speed; }
+    bool Intersect(const AxisAlignedBoundingBox& aabb) const;
+    bool Intersect(AxisAlignedBoundingBox&& aabb) const;
+
+    operator ViewFrustum() const;
 
 private:
     MainCamera()
@@ -134,7 +119,7 @@ private:
         m_camera = std::make_unique<PerspectiveCamera>(glm::vec3(0.f, 0.f, 3.f), glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f), 45.f, 800.f / 600.f, 0.1f, 1000.f);
     }
 
-    std::unique_ptr<Camera> m_camera;
+    std::unique_ptr<PerspectiveCamera> m_camera;
     float m_forward_speed = default_forward_speed;
     float m_horizontal_speed = 0.01f;
 

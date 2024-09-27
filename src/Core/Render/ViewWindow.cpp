@@ -28,12 +28,6 @@ void ViewWindow::Render()
 {
     SCOPED_RENDER_EVENT("View");
     m_render_pipeline->Render();
-    RenderViewUI();
-}
-
-void ViewWindow::RenderViewUI()
-{
-    SCOPED_RENDER_EVENT("View UI");
 }
 
 void ViewWindow::OnMousePosCallback(double xpos, double ypos)

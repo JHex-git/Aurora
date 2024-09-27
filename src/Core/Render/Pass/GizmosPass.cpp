@@ -51,18 +51,21 @@ bool GizmosPass::Init(const std::array<int, 2>& viewport_size)
     if (!translation_handle_mesh->Load("assets/models/gizmos/translation_handle.fbx")) return false;
     m_translation_handle_material = std::make_shared<MeshRenderMaterial>(translation_handle_mesh);
     m_translation_handle_material->Init(SceneManager::GetInstance().GetDummySceneObject());
+    translation_handle_mesh->SetRenderProxy(m_translation_handle_material);
 
     // auto rotation_handle_mesh = std::make_shared<Mesh>();
     // rotation_handle_mesh->Init(SceneManager::GetInstance().GetDummySceneObject());
     // if (!rotation_handle_mesh->Load("assets/models/gizmos/rotation_handle.fbx")) return false;
     // m_rotation_handle_material = std::make_shared<MeshRenderMaterial>(rotation_handle_mesh);
     // m_rotation_handle_material->Init(SceneManager::GetInstance().GetDummySceneObject());
+    // rotation_handle_mesh->SetRenderProxy(m_rotation_handle_material);
 
     // auto scale_handle_mesh = std::make_shared<Mesh>();
     // scale_handle_mesh->Init(SceneManager::GetInstance().GetDummySceneObject());
     // if (!scale_handle_mesh->Load("assets/models/gizmos/scale_handle.fbx")) return false;
     // m_scale_handle_material = std::make_shared<MeshRenderMaterial>(scale_handle_mesh);
     // m_scale_handle_material->Init(SceneManager::GetInstance().GetDummySceneObject());
+    // scale_handle_mesh->SetRenderProxy(m_scale_handle_material);
 
     m_current_handle_material = m_translation_handle_material;
 

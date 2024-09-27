@@ -24,14 +24,16 @@ RenderPipeline::RenderPipeline(std::array<int, 2> render_size) :
 
 bool RenderPipeline::Init()
 {
-    m_mesh_phong_pass = std::make_unique<MeshPhongPass>();
+    m_mesh_phong_pass = std::make_unique<ForwardRenderPass>();
     m_mesh_outline_pass = std::make_unique<MeshOutlinePass>();
     m_skybox_pass = std::make_unique<SkyboxPass>();
     m_gizmos_pass = std::make_unique<GizmosPass>();
+    m_visualize_pass = std::make_unique<VisualizePass>();
     return m_mesh_phong_pass->Init(m_render_size) && 
            m_mesh_outline_pass->Init(m_render_size) && 
            m_skybox_pass->Init(m_render_size) && 
-           m_gizmos_pass->Init(m_render_size);
+           m_gizmos_pass->Init(m_render_size) &&
+           m_visualize_pass->Init(m_render_size);
 }
 
 void RenderPipeline::Render()
@@ -41,7 +43,9 @@ void RenderPipeline::Render()
 
     SCOPED_RENDER_EVENT("Scene Rendering");
     m_mesh_phong_pass->Render();
-    Blit(m_mesh_phong_pass->GetFrameBuffer(), m_skybox_pass->GetFrameBuffer());
+    Blit(m_mesh_phong_pass->GetFrameBuffer(), m_visualize_pass->GetFrameBuffer());
+    m_visualize_pass->Render();
+    Blit(m_visualize_pass->GetFrameBuffer(), m_skybox_pass->GetFrameBuffer());
     m_skybox_pass->Render();
     RenderPass* prev_pass = m_skybox_pass.get();
 
@@ -65,16 +69,6 @@ void RenderPipeline::Render()
     Blit(prev_pass->GetFrameBuffer(), m_gizmos_pass->GetFrameBuffer());
     m_gizmos_pass->Render();
     Blit(m_gizmos_pass->GetFrameBuffer(), m_fbo);
-}
-
-MeshRenderMaterialID RenderPipeline::RegisterMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material)
-{
-    return m_mesh_phong_pass->RegisterMeshRenderMaterial(mesh_render_material);
-}
-
-void RenderPipeline::UnregisterMeshRenderMaterial(MeshRenderMaterialID id)
-{
-    m_mesh_phong_pass->UnregisterMeshRenderMaterial(id);
 }
 
 void RenderPipeline::SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material)

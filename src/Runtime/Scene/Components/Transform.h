@@ -26,6 +26,8 @@ public:
     void Serialize(tinyxml2::XMLElement *node) override final;
     void Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner) override final;
 
+    operator glm::mat4() const;
+
 private:
     REFLECTABLE_DECLARE(Transform, m_position)
     glm::vec3 m_position = glm::vec3(0.0f);

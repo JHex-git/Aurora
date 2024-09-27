@@ -1,7 +1,7 @@
 // std include
 
 // thirdparty include
-
+#include "thirdparty/opengl/glm/glm/gtc/quaternion.hpp"
 // Aurora include
 #include "Runtime/Scene/Components/Transform.h"
 
@@ -45,5 +45,11 @@ void Transform::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<Sc
     node->FirstChildElement("Scale")->QueryFloatAttribute("X", &m_scale.x);
     node->FirstChildElement("Scale")->QueryFloatAttribute("Y", &m_scale.y);
     node->FirstChildElement("Scale")->QueryFloatAttribute("Z", &m_scale.z);
+}
+
+Transform::operator glm::mat4() const
+{
+    glm::quat rotation = glm::quat(glm::radians(m_rotation));
+    return glm::translate(glm::identity<glm::mat4>(), m_position) * glm::mat4_cast(rotation) * glm::scale(glm::identity<glm::mat4>(), m_scale);
 }
 } // namespace Aurora

@@ -23,16 +23,6 @@ void RenderSystem::Render()
     m_view_window->Render();
 }
 
-MeshRenderMaterialID RenderSystem::RegisterMeshRenderMaterial(std::shared_ptr<MeshRenderMaterial> mesh_render_material)
-{
-    return m_view_window->RegisterMeshRenderMaterial(mesh_render_material);
-}
-
-void RenderSystem::UnregisterMeshRenderMaterial(MeshRenderMaterialID id)
-{
-    m_view_window->UnregisterMeshRenderMaterial(id);
-}
-
 void RenderSystem::SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material)
 {
     m_view_window->SetSkyboxRenderMaterial(skybox_render_material);

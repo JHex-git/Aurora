@@ -52,6 +52,7 @@ void MeshRenderer::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr
                 }
                 m_material = std::make_shared<MeshRenderMaterial>(m_mesh);
                 m_material->Deserialize(p_child, owner);
+                m_mesh->SetRenderProxy(m_material);
             }
             else spdlog::error("Unknown material type {} in MeshRendererComponent.", type);
         }
@@ -75,6 +76,7 @@ bool MeshRenderer::LoadMesh(const std::string& path)
 
     m_material = std::make_shared<MeshRenderMaterial>(m_mesh);
     auto is_material_initialized = m_material->Init(m_scene_object.lock());
+    m_mesh->SetRenderProxy(m_material);
 
     return is_mesh_loaded && is_material_initialized;
 }
