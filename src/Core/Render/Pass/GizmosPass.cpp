@@ -72,7 +72,7 @@ bool GizmosPass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void GizmosPass::Render()
+void GizmosPass::Render(ContextState& context_state)
 {
     SCOPED_RENDER_EVENT("Gizmos Pass");
     m_fbo->Bind();

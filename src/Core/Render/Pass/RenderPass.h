@@ -5,6 +5,7 @@
 
 // Aurora include
 #include "glWrapper/FrameBufferObject.h"
+#include "glWrapper/ContextState.h"
 
 class GLFWwindow;
 namespace Aurora
@@ -17,7 +18,7 @@ public:
     ~RenderPass() = default;
 
     virtual bool Init(const std::array<int, 2>& viewport_size) { m_viewport_size = viewport_size; return true; }
-    virtual void Render() = 0;
+    virtual void Render(ContextState& context_state) = 0;
 
     std::shared_ptr<FrameBufferObject> GetFrameBuffer() const { return m_fbo; }
 

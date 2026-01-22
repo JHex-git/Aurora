@@ -23,7 +23,7 @@ public:
     ~ViewWindow() = default;
 
     bool Init();
-    void Render();
+    void Render(ContextState& context_state);
 
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material) { m_render_pipeline->SetSkyboxRenderMaterial(skybox_render_material); }
     void UpdateViewInfo(ViewInfo&& view_info) { m_view_info = std::move(view_info); }

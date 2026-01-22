@@ -21,7 +21,7 @@ public:
     ~RenderPipeline() = default;
 
     bool Init();
-    void Render();
+    void Render(ContextState& context_state);
 
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material);
 

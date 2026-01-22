@@ -76,7 +76,7 @@ bool MeshOutlinePass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void MeshOutlinePass::Render()
+void MeshOutlinePass::Render(ContextState& context_state)
 {
     if (m_mesh_stencil_shader_program == nullptr || m_outline_shader_program == nullptr) return;
     auto selected_mesh_render_material = m_selected_mesh_render_material.lock();
@@ -90,15 +90,17 @@ void MeshOutlinePass::Render()
     {
         SCOPED_RENDER_EVENT("Draw mesh stencil");
 
-        glDisable(GL_DEPTH_TEST);
-        glDepthMask(GL_FALSE);
-
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE); // disable color writing
-
-        glEnable(GL_STENCIL_TEST);
-        glStencilMask(0xFF); // enable writing to the stencil buffer
-        glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // write 1 to the stencil buffer where the mesh is rendered
+        RenderState render_state;
+        render_state.depth_stencil_state = {
+            .depth_test_enabled = false,
+            .depth_write_enabled = false,
+            .stencil_test_enabled = true,
+            .stencil_write_mask = 0xFF,  // enable writing to the stencil buffer
+            .stencil_func = {GL_ALWAYS, 1, 0xFF},
+            .stencil_op = {GL_KEEP, GL_KEEP, GL_REPLACE} // write 1 to the stencil buffer where the mesh is rendered
+        };
+        render_state.color_mask = ColorMask::WriteNone();
+        context_state.ApplyRenderState(render_state);
 
         // render selected model to write stencil buffer
         m_mesh_stencil_shader_program->Bind();
@@ -119,13 +121,18 @@ void MeshOutlinePass::Render()
     {
         SCOPED_RENDER_EVENT("Draw outline");
 
-        glDepthMask(GL_TRUE);
-
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE); // enable color writing
-        glCullFace(GL_FRONT);
-        glStencilMask(0x00); // disable writing to the stencil buffer
-        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+        RenderState render_state;
+        render_state.color_mask = ColorMask::WriteAll();
+        render_state.depth_stencil_state = {
+            .depth_test_enabled = false,
+            .depth_write_enabled = true,
+            .stencil_test_enabled = true,
+            .stencil_write_mask = 0x00, // disable writing to the stencil buffer
+            .stencil_func = {GL_NOTEQUAL, 1, 0xFF},
+            .stencil_op = {GL_KEEP, GL_KEEP, GL_KEEP}
+        };
+        render_state.raster_state.cull_face = GL_FRONT;
+        context_state.ApplyRenderState(render_state);
 
         // render dilated model and use stencil buffer to render outline
         m_outline_shader_program->Bind();
@@ -150,14 +157,6 @@ void MeshOutlinePass::Render()
         m_outline_shader_program->Unbind();
     }
 
-    // reset
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-    glCullFace(GL_BACK);
-    glDisable(GL_STENCIL_TEST);
-    glStencilMask(0xFF);
-    glStencilFunc(GL_ALWAYS, 0, 0xFF);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     m_fbo->Unbind();
 }
 } // namespace Aurora

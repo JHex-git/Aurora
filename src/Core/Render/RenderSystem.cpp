@@ -19,8 +19,8 @@ bool RenderSystem::Init()
 
 void RenderSystem::Render()
 {
-    m_editor_ui_renderer->Render();
-    m_view_window->Render();
+    m_editor_ui_renderer->Render(m_context_state);
+    m_view_window->Render(m_context_state);
 }
 
 void RenderSystem::SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material)

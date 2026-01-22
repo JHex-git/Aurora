@@ -17,7 +17,7 @@ public:
     ~EditorUIRenderer();
 
     bool Init();
-    void Render();
+    void Render(ContextState& context_state);
 
     void OnSelectedSceneObjectChange() const;
     bool OnClose() const;

@@ -18,7 +18,7 @@ public:
     ~ForwardRenderPass() = default;
 
     bool Init(const std::array<int, 2>& viewport_size) override;
-    void Render() override;
+    void Render(ContextState& context_state) override;
 
 private:
     std::unique_ptr<ShaderProgram> m_point_light_tex_shader_program;

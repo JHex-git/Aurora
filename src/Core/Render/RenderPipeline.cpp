@@ -36,17 +36,17 @@ bool RenderPipeline::Init()
            m_visualize_pass->Init(m_render_size);
 }
 
-void RenderPipeline::Render()
+void RenderPipeline::Render(ContextState& context_state)
 {
     auto scene = SceneManager::GetInstance().GetScene();
     if (!scene) return;
 
     SCOPED_RENDER_EVENT("Scene Rendering");
-    m_mesh_phong_pass->Render();
+    m_mesh_phong_pass->Render(context_state);
     Blit(m_mesh_phong_pass->GetFrameBuffer(), m_visualize_pass->GetFrameBuffer());
-    m_visualize_pass->Render();
+    m_visualize_pass->Render(context_state);
     Blit(m_visualize_pass->GetFrameBuffer(), m_skybox_pass->GetFrameBuffer());
-    m_skybox_pass->Render();
+    m_skybox_pass->Render(context_state);
     RenderPass* prev_pass = m_skybox_pass.get();
 
     // Outline should be rendered after all to ensure not be occluded
@@ -59,7 +59,7 @@ void RenderPipeline::Render()
         {
             m_mesh_outline_pass->SetMeshRenderMaterial(selected_mesh_renderer->GetRenderMaterial());
             BlitColor(m_skybox_pass->GetFrameBuffer(), m_mesh_outline_pass->GetFrameBuffer());
-            m_mesh_outline_pass->Render();
+            m_mesh_outline_pass->Render(context_state);
             prev_pass = m_mesh_outline_pass.get();
         }
 
@@ -67,7 +67,7 @@ void RenderPipeline::Render()
     }
 
     Blit(prev_pass->GetFrameBuffer(), m_gizmos_pass->GetFrameBuffer());
-    m_gizmos_pass->Render();
+    m_gizmos_pass->Render(context_state);
     Blit(m_gizmos_pass->GetFrameBuffer(), m_fbo);
 }
 

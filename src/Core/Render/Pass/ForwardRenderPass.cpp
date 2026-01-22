@@ -216,7 +216,7 @@ bool ForwardRenderPass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void ForwardRenderPass::Render()
+void ForwardRenderPass::Render(ContextState& context_state)
 {
     m_fbo->Bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -232,8 +232,6 @@ void ForwardRenderPass::Render()
 
     if (m_point_light_tex_shader_program != nullptr && m_point_light_no_tex_shader_program != nullptr)
     {
-        glEnable(GL_DEPTH_TEST);
-
         SCOPED_RENDER_EVENT("ForwardRenderPass");
 
         const auto& lights = LightManager::GetInstance().GetActiveLights();
@@ -275,6 +273,9 @@ void ForwardRenderPass::Render()
             m_shading_fbo->Bind();
             glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+            RenderState render_state;
+            render_state.depth_stencil_state.depth_test_enabled = true;
+            context_state.ApplyRenderState(render_state);
             // Generate shadow map
             {
                 SCOPED_RENDER_EVENT("Shadow Pass");
@@ -432,16 +433,14 @@ void ForwardRenderPass::Render()
                 SCOPED_RENDER_EVENT("Composite Pass");
 
                 m_fbo->Bind();
-                glDisable(GL_DEPTH_TEST);
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_ONE, GL_ONE);
-                glBlendEquation(GL_FUNC_ADD);
+                RenderState render_state;
+                render_state.depth_stencil_state.depth_test_enabled = false;
+                render_state.blend_state = BlendState::Additive();
+                context_state.ApplyRenderState(render_state);
                 m_shading_fbo->BindColorTexture(0, 1);
                 m_composite_shader_program->Bind();
                 m_composite_shader_program->SetUniform("uTexture", 1);
                 DrawQuad(1);
-                glDisable(GL_BLEND);
-                glEnable(GL_DEPTH_TEST);
             }
         }
 

@@ -59,7 +59,7 @@ bool VisualizePass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void VisualizePass::Render()
+void VisualizePass::Render(ContextState& context_state)
 {
     m_fbo->Bind();
     
@@ -77,11 +77,6 @@ void VisualizePass::Render()
         m_spatial_hierarchy_shader_program->SetUniform("uColor", glm::vec3(1.0f, 0.0f, 0.0f));
         glLineWidth(2.0f);
         glDrawArrays(GL_LINES, 0, vertices.size());
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE, GL_ONE);
-        glBlendEquation(GL_FUNC_ADD);
-        glDisable(GL_BLEND);
     }
 }
 } // namespace Aurora

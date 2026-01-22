@@ -18,7 +18,7 @@ public:
     ~VisualizePass() = default;
 
     bool Init(const std::array<int, 2>& viewport_size) override;
-    void Render() override;
+    void Render(ContextState& context_state) override;
 
 private:
     std::shared_ptr<VertexBuffer> m_spatial_hierarchy_vbo;

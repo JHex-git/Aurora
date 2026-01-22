@@ -18,7 +18,7 @@ public:
     ~SkyboxPass() = default;
 
     bool Init(const std::array<int, 2>& viewport_size) override;
-    void Render() override;
+    void Render(ContextState& context_state) override;
 
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material) { m_skybox_render_material = skybox_render_material; }
 

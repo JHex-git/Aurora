@@ -47,7 +47,7 @@ bool SkyboxPass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void SkyboxPass::Render()
+void SkyboxPass::Render(ContextState& context_state)
 {
     auto skybox_render_material = m_skybox_render_material.lock();
     if (skybox_render_material == nullptr || m_shader_program == nullptr) return;
@@ -57,8 +57,11 @@ void SkyboxPass::Render()
     m_fbo->Bind();
     glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
 
-    glDepthFunc(GL_LEQUAL);
-    glCullFace(GL_FRONT);
+    RenderState render_state;
+    render_state.depth_stencil_state.depth_func = GL_LEQUAL;
+    render_state.raster_state.cull_face = GL_FRONT;
+    context_state.ApplyRenderState(render_state);
+
     m_shader_program->Bind();
     // render the loaded model
     const glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), MainCamera::GetInstance().GetPosition());
@@ -74,8 +77,6 @@ void SkyboxPass::Render()
         skybox_render_material->m_ebos[i]->Unbind();
         skybox_render_material->m_vbos[i]->Unbind();
     }
-    glDepthFunc(GL_LESS);
-    glCullFace(GL_BACK);
     m_shader_program->Unbind();
 
     m_fbo->Unbind();

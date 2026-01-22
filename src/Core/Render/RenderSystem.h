@@ -45,6 +45,7 @@ private:
     RenderSystem() = default;
 
 private:
+    ContextState m_context_state;
     std::unique_ptr<EditorUIRenderer> m_editor_ui_renderer;
     std::unique_ptr<ViewWindow> m_view_window;
 };

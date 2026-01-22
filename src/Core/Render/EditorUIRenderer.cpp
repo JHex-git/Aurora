@@ -39,7 +39,7 @@ bool EditorUIRenderer::Init()
     return true;
 }
 
-void EditorUIRenderer::Render()
+void EditorUIRenderer::Render(ContextState& context_state)
 {
     SCOPED_RENDER_EVENT("Editor UI");
     // Start the Dear ImGui frame
@@ -55,6 +55,8 @@ void EditorUIRenderer::Render()
     glViewport(0, 0, size[0], size[1]);
     glClear(GL_DEPTH_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    context_state.Invalidate();
 }
 
 void EditorUIRenderer::OnSelectedSceneObjectChange() const

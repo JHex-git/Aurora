@@ -24,10 +24,10 @@ bool ViewWindow::Init()
     return m_render_pipeline->Init();
 }
 
-void ViewWindow::Render()
+void ViewWindow::Render(ContextState& context_state)
 {
     SCOPED_RENDER_EVENT("View");
-    m_render_pipeline->Render();
+    m_render_pipeline->Render(context_state);
 }
 
 void ViewWindow::OnMousePosCallback(double xpos, double ypos)
