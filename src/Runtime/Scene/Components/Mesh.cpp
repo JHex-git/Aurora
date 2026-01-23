@@ -100,9 +100,10 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
     // process vertices
     for(unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
-        glm::vec3 position, normal;
-        glm::vec2 tex_coord;
-        glm::vec4 color;
+        glm::vec3 position(0.0f); 
+        glm::vec3 normal(0.0f);
+        glm::vec2 tex_coord(0.0f);
+        glm::vec4 color(0.0f);
         if (mesh->HasPositions())
         {
             position = transform * glm::vec4(glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z), 1.0f);
@@ -123,7 +124,7 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
             color = glm::vec4(mesh->mColors[0][i].r, mesh->mColors[0][i].g, mesh->mColors[0][i].b, mesh->mColors[0][i].a);
         }
 
-        vertices.emplace_back(std::move(position), std::move(normal), std::move(tex_coord), std::move(color));
+        vertices.emplace_back(position, normal, tex_coord, color);
     }
     // process indices
     for(unsigned int i = 0; i < mesh->mNumFaces; i++)
