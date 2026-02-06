@@ -85,11 +85,10 @@ void MeshOutlinePass::Render(ContextState& context_state)
     SCOPED_RENDER_EVENT("Mesh Outline Pass");
     m_fbo->Bind();
     glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
-    glClear(GL_STENCIL_BUFFER_BIT);
     const glm::mat4 model = selected_mesh_render_material->GetModelMatrix();
     {
         SCOPED_RENDER_EVENT("Draw mesh stencil");
-
+        
         RenderState render_state;
         render_state.depth_stencil_state = {
             .depth_test_enabled = false,
@@ -101,6 +100,7 @@ void MeshOutlinePass::Render(ContextState& context_state)
         };
         render_state.color_mask = ColorMask::WriteNone();
         context_state.ApplyRenderState(render_state);
+        glClear(GL_STENCIL_BUFFER_BIT);
 
         // render selected model to write stencil buffer
         m_mesh_stencil_shader_program->Bind();
