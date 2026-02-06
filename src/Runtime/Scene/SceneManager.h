@@ -47,7 +47,7 @@ public:
     MeshID RegisterMesh(const std::shared_ptr<Mesh>& mesh);
     void UnregisterMesh(MeshID id) { m_meshes.erase(id); }
     const std::unordered_map<MeshID, std::weak_ptr<Mesh>>& GetMeshes() const { return m_meshes; }
-    const std::vector<std::shared_ptr<Mesh>> GetMeshesInViewFrustum() const;
+    std::vector<std::shared_ptr<Mesh>> GetMeshesInViewFrustum() const;
 
     // This is used for scene irrelavant objects, such as gizmos.
     std::shared_ptr<SceneObject> GetDummySceneObject() const { return m_dummy_scene_object; }

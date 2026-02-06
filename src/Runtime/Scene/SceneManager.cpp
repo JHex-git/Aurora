@@ -115,13 +115,13 @@ MeshID SceneManager::RegisterMesh(const std::shared_ptr<Mesh>& mesh)
     return id++;
 }
 
-const std::vector<std::shared_ptr<Mesh>> SceneManager::GetMeshesInViewFrustum() const
+std::vector<std::shared_ptr<Mesh>> SceneManager::GetMeshesInViewFrustum() const
 {
     std::vector<std::shared_ptr<Mesh>> meshes;
     if (m_scene)
     {
         std::list<BoundingVolumeHierarchy*> bvh_nodes;
-        bvh_nodes.push_back(m_bvh.get());
+        if (BoundingVolumeHierarchy *  bvh_node = m_bvh.get()) bvh_nodes.push_back(bvh_node);
         BoundingVolumeHierarchy* node = nullptr;
         while (!bvh_nodes.empty())
         {
