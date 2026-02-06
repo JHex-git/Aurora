@@ -13,7 +13,15 @@ namespace Aurora
 {
 SceneManager::~SceneManager()
 {
-    SaveScene();
+}
+
+void SceneManager::CleanUp()
+{
+    m_scene.reset();
+    m_octree.reset();
+    m_bvh.reset();
+    m_meshes.clear();
+    m_dummy_scene_object.reset();
 }
 
 void SceneManager::SaveScene()

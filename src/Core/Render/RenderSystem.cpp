@@ -5,6 +5,7 @@
 #include "thirdparty/opengl/glfw/include/GLFW/glfw3.h"
 // Aurora include
 #include "Core/Render/RenderSystem.h"
+#include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
 {
@@ -15,6 +16,17 @@ bool RenderSystem::Init()
     m_editor_ui_renderer = std::make_unique<EditorUIRenderer>();
     m_view_window = std::make_unique<ViewWindow>();
     return m_editor_ui_renderer->Init() && m_view_window->Init();
+}
+
+bool RenderSystem::OnClose() const
+{
+    if (m_editor_ui_renderer->OnClose())
+    {
+        SceneManager::GetInstance().CleanUp();
+
+        return true;
+    }
+    return false;
 }
 
 void RenderSystem::Render()

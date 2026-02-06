@@ -174,7 +174,12 @@ void EditorUI::InitDialogs()
             {
                 ImGui::Text("Scene has been modified, do you want to save it?");
                 DialogAction(m_show_save_scene_dialog, 
-                    [this](){ SceneManager::GetInstance().SaveScene(); }, [](){ SceneManager::GetInstance().GetScene()->ClearDirty(); });
+                    [this](){ 
+                        SceneManager::GetInstance().SaveScene();
+                    }, 
+                    [](){
+                        SceneManager::GetInstance().GetScene()->ClearDirty();
+                    });
                 ImGui::EndPopup();
             }
         }

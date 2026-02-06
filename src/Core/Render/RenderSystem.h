@@ -32,7 +32,7 @@ public:
     bool Init();
     void Render();
 
-    bool OnClose() const { return m_editor_ui_renderer->OnClose(); }
+    bool OnClose() const;
 
     void UpdateViewInfo(ViewInfo&& view_info) { m_view_window->UpdateViewInfo(std::move(view_info)); }
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material);

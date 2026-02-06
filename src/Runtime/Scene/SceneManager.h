@@ -33,6 +33,7 @@ public:
 
     ~SceneManager();
 
+    void CleanUp();
     void LoadScene(const std::string& scene_path);
     void SaveScene();
     void SaveSceneAs(const std::string& scene_path);
