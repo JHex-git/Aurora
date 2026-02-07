@@ -103,9 +103,11 @@ public:
 
     std::optional<Texture> MakeTexture2D(GLsizei width, GLsizei height, GLint format, GLenum type);
     std::optional<Texture> MakeTexture2D(const std::string& path);
+    std::optional<Texture> MakeTexture2DArray(GLsizei width, GLsizei height, GLint format, GLenum type, GLsizei num);
 
     std::optional<Texture> MakeTextureCubeMap(GLsizei width, GLsizei height, GLint format, GLenum type);
     std::optional<Texture> MakeTextureCubeMap(const std::array<std::string, 6>& paths);
+    std::optional<Texture> MakeTextureCubeMapArray(GLsizei width, GLsizei height, GLint format, GLenum type, GLsizei num);
 
 private:
     WrapType m_wrap_s = WrapType::Repeat;
@@ -126,7 +128,9 @@ public:
     enum class Type : GLenum
     {
         Texture2D = GL_TEXTURE_2D,
-        Cubemap = GL_TEXTURE_CUBE_MAP
+        Cubemap = GL_TEXTURE_CUBE_MAP,
+        Texture2DArray = GL_TEXTURE_2D_ARRAY,
+        CubemapArray = GL_TEXTURE_CUBE_MAP_ARRAY
     };
 
     ~Texture();

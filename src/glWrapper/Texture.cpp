@@ -22,6 +22,18 @@ std::optional<Texture> TextureBuilder::MakeTexture2D(GLsizei width, GLsizei heig
     return std::move(texture);
 }
 
+std::optional<Texture> TextureBuilder::MakeTexture2DArray(GLsizei width, GLsizei height, GLint format, GLenum type, GLsizei layers)
+{
+    Texture texture(Texture::Type::Texture2DArray);
+    texture.Bind();
+    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, m_internal_format, width, height, layers, 0, format, type, nullptr);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(m_mag_filter));
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, static_cast<GLint>(m_wrap_s));
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, static_cast<GLint>(m_wrap_t));
+    return std::move(texture);
+}
+
 std::optional<Texture> TextureBuilder::MakeTexture2D(const std::string& path)
 {
     if (m_gen_mipmap && (m_min_filter == TextureBuilder::FilterType::Nearest || m_min_filter == TextureBuilder::FilterType::Linear))
@@ -73,7 +85,6 @@ std::optional<Texture> TextureBuilder::MakeTexture2D(const std::string& path)
     }
 }
 
-
 std::optional<Texture> TextureBuilder::MakeTextureCubeMap(GLsizei width, GLsizei height, GLint format, GLenum type)
 {
     Texture texture(Texture::Type::Cubemap);
@@ -87,6 +98,19 @@ std::optional<Texture> TextureBuilder::MakeTextureCubeMap(GLsizei width, GLsizei
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, static_cast<GLint>(m_wrap_s));
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, static_cast<GLint>(m_wrap_t));
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, static_cast<GLint>(m_wrap_r));
+    return std::move(texture);
+}
+
+std::optional<Texture> TextureBuilder::MakeTextureCubeMapArray(GLsizei width, GLsizei height, GLint format, GLenum type, GLsizei num)
+{
+    Texture texture(Texture::Type::CubemapArray);
+    texture.Bind();
+    glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, 0, m_internal_format, width, height, num * 6, 0, format, type, nullptr);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(m_mag_filter));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_S, static_cast<GLint>(m_wrap_s));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, static_cast<GLint>(m_wrap_t));
+    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, static_cast<GLint>(m_wrap_r));
     return std::move(texture);
 }
 

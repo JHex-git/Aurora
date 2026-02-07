@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 
 in VS_Out {
     vec3 FragPos;
@@ -19,28 +19,34 @@ uniform vec3 uColor;
 #endif
 
 uniform vec3 uViewPos;
-uniform vec3 uLightPos;
-uniform vec3 uLightColor;
-uniform float uLightIntensity;
+const int MAX_LIGHTS = 3;
 
-#ifdef POINT_LIGHT
-uniform float uZNear;
-uniform float uZFar;
-uniform samplerCube uTexShadowMap;
-#else // DIRECTIONAL_LIGHT
-uniform mat4 uOrthoVP;
-uniform float uNearFarNorm;
-uniform vec3 uLightDirection;
-uniform sampler2D uTexShadowMap;
-#endif
+struct Light
+{
+    vec3 lightPos;
+    vec3 lightColor;
+    vec2 cullDistance;
+    float lightIntensity;
+};
 
-#ifdef POINT_LIGHT
-#define SELF_SHADOW_BIAS 1e-4
+layout(std140) uniform LightBlock
+{
+    Light lights[MAX_LIGHTS];
+    int numLights;
+} uLightBlock;
+uniform samplerCubeArray uTexPointLightShadowMaps;
+
+uniform mat4 uDirectionalLightOrthoVP;
+uniform vec3 uDirectionalLightDirection;
+uniform vec3 uDirectionalLightColor;
+uniform float uDirectionalLightIntensity;
+uniform float uDirectionalLightNearFarNorm;
+uniform bool uEnableDirectionalLightShadow;
+uniform sampler2D uDirectionalLightTexShadowMap;
+
+#define POINT_LIGHT_SELF_SHADOW_BIAS 1e-4
+#define DIRECTIONAL_LIGHT_SELF_SHADOW_BIAS 5e-4
 #define SELF_SHADOW_FACTOR 0.1
-#else // DIRECTIONAL_LIGHT
-#define SELF_SHADOW_BIAS 5e-4
-#define SELF_SHADOW_FACTOR 0.1
-#endif
 
 #ifdef ENABLE_TEXCOORDS
 vec3 getNormalFromMap()
@@ -61,7 +67,6 @@ vec3 getNormalFromMap()
 }
 #endif
 
-#ifdef POINT_LIGHT
 // perspective transformation result in zClip:
 // zClip = \frac{far + near}{far - near} + \frac{1}{depth} * (\frac{-2\cdot far \cdot near}{far - near})
 // So depth = \frac{-2\cdot far\cdot near}{zClip(far - near)-far-near}
@@ -77,80 +82,98 @@ float convertPerspective01ZToLinear(float z, float zNear, float zFar)
     return zFar * zNear / (zFar - z * (zFar - zNear));
 }
 
-int getVisibility(float lightDistance, vec3 lightDir, vec3 normal)
+int getPointLightVisibility(float lightDistance, vec3 lightDir, vec3 normal, int light_index, float zNear, float zFar)
 {
     if (dot(lightDir, normal) <= 0) return 0;
     // The maximum axis of dir is the face receives the depth
     // so the distance can be calculated by similarity
-    float occluderDistance = convertPerspective01ZToLinear(texture(uTexShadowMap, -lightDir).r, uZNear, uZFar);
+    vec4 texCoord = vec4(-lightDir, float(light_index));
+    float occluderDistance = convertPerspective01ZToLinear(texture(uTexPointLightShadowMaps, texCoord).r, zNear, zFar);
     occluderDistance /= max(abs(lightDir.x), max(abs(lightDir.y), abs(lightDir.z)));
-    return lightDistance < occluderDistance + clamp(SELF_SHADOW_FACTOR * (1 - dot(lightDir, normal)), SELF_SHADOW_BIAS, SELF_SHADOW_FACTOR) ? 1 : 0;   
+    return lightDistance < occluderDistance + clamp(SELF_SHADOW_FACTOR * (1 - dot(lightDir, normal)), POINT_LIGHT_SELF_SHADOW_BIAS, SELF_SHADOW_FACTOR) ? 1 : 0;   
 }
-#else // DIRECTIONAL_LIGHT
-int getVisibility(vec3 lightDir, vec3 normal)
+
+int getDirectionalLightVisibility(vec3 lightDir, vec3 normal)
 {
     if (dot(lightDir, normal) <= 0) return 0;
-    vec4 coords = uOrthoVP * vec4(vsOut.FragPos, 1);
+    vec4 coords = uDirectionalLightOrthoVP * vec4(vsOut.FragPos, 1);
     coords /= coords.w;
 
     // if not covered by the shadow map, default lit
     if (any(greaterThanEqual(abs(coords.xyz), vec3(1 - 1e-3)))) return 1;
 
     vec2 ortho_coords = (coords.xy + 1) / 2;
-    float occluderDistance = texture(uTexShadowMap, ortho_coords).r * uNearFarNorm;
-    float lightDistance = (coords.z + 1) / 2 * uNearFarNorm;
-    return lightDistance < occluderDistance + clamp(SELF_SHADOW_FACTOR * (1 - dot(lightDir, normal)), SELF_SHADOW_BIAS, SELF_SHADOW_FACTOR) ? 1 : 0;
+    float occluderDistance = texture(uDirectionalLightTexShadowMap, ortho_coords).r * uDirectionalLightNearFarNorm;
+    float lightDistance = (coords.z + 1) / 2 * uDirectionalLightNearFarNorm;
+    return lightDistance < occluderDistance + clamp(SELF_SHADOW_FACTOR * (1 - dot(lightDir, normal)), DIRECTIONAL_LIGHT_SELF_SHADOW_BIAS, SELF_SHADOW_FACTOR) ? 1 : 0;
 }
-#endif
+
+vec3 calculateSpecular(vec3 lightDir, vec3 normal, vec3 viewDir, vec3 lightContrib)
+{
+    float specularStrength = 0.5;
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    return specularStrength * spec * lightContrib;
+}
+
+void PointLighting(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor, inout vec3 lighting)
+{
+    for (int light_index = 0; light_index < uLightBlock.numLights; ++light_index)
+    {
+        Light light = uLightBlock.lights[light_index];
+        vec3 lightDir = normalize(light.lightPos - vsOut.FragPos);
+        float diff = max(dot(normal, lightDir), 0.0);
+        float lightDistance = length(light.lightPos - vsOut.FragPos);
+        float attenuation = 1.0 / (1.0 + 0.09 * lightDistance + 0.032 * lightDistance * lightDistance);
+        vec3 lightContrib = light.lightIntensity * light.lightColor * attenuation;
+        vec3 diffuse = diff * lightContrib;
+
+        vec3 specular = calculateSpecular(lightDir, normal, viewDir, lightContrib);
+
+        int visibility = getPointLightVisibility(lightDistance, lightDir, normal, light_index, light.cullDistance.x, light.cullDistance.y);
+
+        lighting += (diffuse * diffuseColor + specular * specularColor) * visibility;
+    }
+}
+
+void DirectionalLighting(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor, inout vec3 lighting)
+{
+    vec3 lightDir = -uDirectionalLightDirection;
+
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 lightContrib = uDirectionalLightIntensity * uDirectionalLightColor;
+    vec3 diffuse = diff * lightContrib;
+    vec3 specular = calculateSpecular(lightDir, normal, viewDir, lightContrib);
+    int visibility = getDirectionalLightVisibility(lightDir, normal);
+
+    vec3 result = (diffuse * diffuseColor + specular * specularColor) * visibility;
+    lighting += result;
+}
 
 void main()
 {
-    // Ambient
-    float ambientStrength = 0.1;
-    vec3 ambient = ambientStrength * uLightColor;
-
     // Diffuse
 #ifdef ENABLE_TEXCOORDS
     vec3 normal = getNormalFromMap();
 #else
     vec3 normal = normalize(vsOut.Normal);
 #endif
-#ifdef POINT_LIGHT
-    vec3 lightDir = normalize(uLightPos - vsOut.FragPos);
-#else // DIRECTIONAL_LIGHT
-    vec3 lightDir = -uLightDirection;
-#endif
-    float diff = max(dot(normal, lightDir), 0.0);
-
-#ifdef POINT_LIGHT
-    float lightDistance = length(uLightPos - vsOut.FragPos);
-    float attenuation = 1.0 / (1.0 + 0.09 * lightDistance + 0.032 * lightDistance * lightDistance);
-    vec3 lightContrib = uLightIntensity * uLightColor * attenuation;
-#else // DIRECTIONAL_LIGHT
-    vec3 lightContrib = uLightIntensity * uLightColor;
-#endif
-    vec3 diffuse = diff * lightContrib;
-
-    // Specular
-    float specularStrength = 0.5;
-    vec3 viewDir = normalize(uViewPos - vsOut.FragPos);
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-    vec3 specular = specularStrength * spec * lightContrib;
 
 #ifdef ENABLE_TEXCOORDS
-    vec3 objectColor = texture(uTexDiffuse, vsOut.TexCoords).rgb;
+    vec3 diffuseColor = texture(uTexDiffuse, vsOut.TexCoords).rgb;
     vec3 specularColor = texture(uTexSpecular, vsOut.TexCoords).rgb;
 #else
-    vec3 objectColor = uColor;
-    vec3 specularColor = objectColor;
+    vec3 diffuseColor = uColor;
+    vec3 specularColor = diffuseColor;
 #endif
 
-#ifdef POINT_LIGHT
-    int visibility = getVisibility(lightDistance, lightDir, normal);
-#else // DIRECTIONAL_LIGHT
-    int visibility = getVisibility(lightDir, normal);
-#endif
-    vec3 result = ambient * objectColor + (diffuse * objectColor + specular * specularColor) * visibility;
-    color = vec4(result, 1.0);
+    float ambientStrength = 0.1;
+    vec3 lighting = ambientStrength * diffuseColor;
+    vec3 viewDir = normalize(uViewPos - vsOut.FragPos);
+    if (uEnableDirectionalLightShadow)
+    {
+        DirectionalLighting(normal, viewDir, diffuseColor, specularColor, lighting);
+    }
+    PointLighting(normal, viewDir, diffuseColor, specularColor, lighting);
+    color = vec4(lighting, 1.0);
 }

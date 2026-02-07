@@ -73,7 +73,6 @@ void Scene::Update()
     {
         scene_object->Update();
     }
-    LightManager::GetInstance().UpdateActiveLights(MainCamera::GetInstance().GetPosition());
 }
 
 void Scene::Serialize(tinyxml2::XMLElement *node)

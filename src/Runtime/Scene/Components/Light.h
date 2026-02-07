@@ -19,7 +19,8 @@ public:
     {
         Directional,
         Point,
-        Unknown
+        Unknown,
+        MaxTypes
     };
 
     static const char* TypeToCString(Type type)
@@ -58,7 +59,9 @@ public:
     float GetIntensity() const { return m_intensity; }
     glm::vec3 GetDirection();
     Type GetType() const { return m_type; }
+    glm::vec2 GetCullDistance() const { return m_cull_distance; }
 
+    static constexpr LightID INVALID_LIGHT_ID = 0;
 private:
 
     REFLECTABLE_DECLARE(Light, m_color)
@@ -66,8 +69,10 @@ private:
 
     REFLECTABLE_DECLARE(Light, m_intensity)
     float m_intensity = 1.0f;
-    
-    static constexpr LightID INVALID_LIGHT_ID = 0;
+
+    REFLECTABLE_DECLARE(Light, m_cull_distance)
+    glm::vec2 m_cull_distance = glm::vec2(0.1f, 1000.0f);
+
     LightID m_light_id = INVALID_LIGHT_ID;
 
     Type m_type = Type::Point;

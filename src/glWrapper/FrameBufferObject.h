@@ -15,13 +15,16 @@ class FrameBufferObject;
 struct ColorAttachmentDescriptor
 {
     GLint internal_format = GL_RGB;
-    Texture::Type type = Texture::Type::Texture2D;
+    GLenum format = GL_RGB;
+    GLenum type = GL_UNSIGNED_BYTE;
+    Texture::Type texture_type = Texture::Type::Texture2D;
 };
 
 struct DepthAttachmentDescriptor
 {
     bool has_stencil = false;
-    Texture::Type type = Texture::Type::Texture2D;
+    Texture::Type texture_type = Texture::Type::Texture2D;
+    unsigned int layers = 1;
 };
 
 class FrameBufferObjectBuilder
@@ -82,6 +85,7 @@ public:
     void BindDepthCubemapFaceRead(unsigned int face) const;
     // face: 0 to 5
     void BindDepthCubemapFaceDraw(unsigned int face) const;
+    void BindDepthCubemapArray(unsigned int cubemap_index, unsigned int face) const;
 
     void BindColorTexture(size_t index, unsigned int unit);
     void BindDepthTexture(unsigned int unit);
