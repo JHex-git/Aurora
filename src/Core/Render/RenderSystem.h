@@ -8,7 +8,7 @@
 #include "Core/Render/EditorUIRenderer.h"
 #include "Core/Render/ViewWindow.h"
 
-class GLFWWindow;
+struct GLFWWindow;
 namespace Aurora
 {
 

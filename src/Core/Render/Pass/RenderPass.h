@@ -7,7 +7,7 @@
 #include "glWrapper/FrameBufferObject.h"
 #include "glWrapper/ContextState.h"
 
-class GLFWwindow;
+struct GLFWwindow;
 namespace Aurora
 {
 

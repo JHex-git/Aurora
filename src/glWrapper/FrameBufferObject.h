@@ -90,7 +90,7 @@ public:
     void BindColorTexture(size_t index, unsigned int unit);
     void BindDepthTexture(unsigned int unit);
 
-    unsigned int GetColorAttachmentNumber() const { return m_color_attachments.size(); }
+    unsigned int GetColorAttachmentNumber() const { return static_cast<unsigned int>(m_color_attachments.size()); }
     TextureID GetColorAttachmentID(size_t index) const { return index < m_color_attachments.size() ? m_color_attachments[index].GetID() : 0; }
     TextureID GetDepthAttachmentID() const { return m_depth_stencil_attachment.has_value() ? m_depth_stencil_attachment.value().GetID() : 0; }
 

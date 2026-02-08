@@ -85,7 +85,7 @@ void GizmosPass::Render(ContextState& context_state)
     if (auto selected_transform = m_selected_transform.lock())
     {
         m_shader_program->Bind();
-        const glm::mat4 model = glm::scale(glm::translate(glm::identity<glm::mat4>(), selected_transform->GetField<glm::vec3>("m_position")), glm::vec3(1e-4));
+        const glm::mat4 model = glm::scale(glm::translate(glm::identity<glm::mat4>(), selected_transform->GetField<glm::vec3>("m_position")), glm::vec3(1e-4f));
         m_shader_program->SetUniform("uModel", model);
         m_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
         m_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());

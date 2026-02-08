@@ -56,9 +56,9 @@ std::optional<FrameBufferObject> FrameBufferObjectBuilder::Create()
             {
                 color_attachment->Bind();
                 if (m_color_descriptors[i].texture_type == Texture::Type::Texture2D)
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, color_attachment->GetID(), 0);
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i), GL_TEXTURE_2D, color_attachment->GetID(), 0);
                 else
-                    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, color_attachment->GetID(), 0);
+                    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i), color_attachment->GetID(), 0);
                 fbo.m_color_attachments.push_back(std::move(*color_attachment));
             }
             else
@@ -209,7 +209,7 @@ void FrameBufferObject::BindColorCubemapFace(size_t index, unsigned int face) co
     if (index < m_color_attachments.size() && m_color_attachments[index].GetType() == Texture::Type::Cubemap)
     {
         Bind();
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
     }
 }
 
@@ -218,7 +218,7 @@ void FrameBufferObject::BindColorCubemapFaceRead(size_t index, unsigned int face
     if (index < m_color_attachments.size() && m_color_attachments[index].GetType() == Texture::Type::Cubemap)
     {
         BindRead();
-        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
+        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
     }
 }
 
@@ -227,7 +227,7 @@ void FrameBufferObject::BindColorCubemapFaceDraw(size_t index, unsigned int face
     if (index < m_color_attachments.size() && m_color_attachments[index].GetType() == Texture::Type::Cubemap)
     {
         BindDraw();
-        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
     }
 }
 

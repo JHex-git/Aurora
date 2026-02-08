@@ -4,7 +4,7 @@ A toy OpenGL Render Engine.
 ## Platform support
 | Platform | CI |
 |----------|:--:|
-| Windows | <p>[![MSVC CI](https://github.com/JHex-git/Aurora/actions/workflows/MSVC.yml/badge.svg)](https://github.com/JHex-git/Aurora/actions/workflows/MSVC.yml)</p> <p>[![MinGW CI](https://github.com/JHex-git/Aurora/actions/workflows/MinGW.yml/badge.svg)](https://github.com/JHex-git/Aurora/actions/workflows/MSVC.yml)</p> |
+| Windows | <p>[![MSVC CI](https://github.com/JHex-git/Aurora/actions/workflows/MSVC.yml/badge.svg)](https://github.com/JHex-git/Aurora/actions/workflows/MSVC.yml)</p> |
 
 ## Feature
 * Phong shading

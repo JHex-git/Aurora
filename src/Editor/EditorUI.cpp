@@ -255,15 +255,15 @@ void EditorUI::InitComponentFieldLayouter()
             ImGui::TableNextColumn();
             DrawUtils::DrawTextBackground("x", ImVec4(0.793f, 0.148f, 0.0f, 1.0f));
             ImGui::SameLine();
-            ImGui::DragFloat("##x", &angle.x, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
+            ImGui::DragFloat("##x", &angle.x, 0.1f, 0, 359.9f, "%.2f", drag_float_flags);
             ImGui::TableNextColumn();
             DrawUtils::DrawTextBackground("y", ImVec4(0.402f, 0.660f, 0.0f, 1.0f));
             ImGui::SameLine();
-            ImGui::DragFloat("##y", &angle.y, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
+            ImGui::DragFloat("##y", &angle.y, 0.1f, 0, 359.9f, "%.2f", drag_float_flags);
             ImGui::TableNextColumn();
             DrawUtils::DrawTextBackground("z", ImVec4(0.172f, 0.492f, 0.930f, 1.0f));
             ImGui::SameLine();
-            ImGui::DragFloat("##z", &angle.z, 0.1f, 0, 359.9, "%.2f", drag_float_flags);
+            ImGui::DragFloat("##z", &angle.z, 0.1f, 0, 359.9f, "%.2f", drag_float_flags);
             ImGui::EndTable();
 
             const auto new_quat = glm::quat(glm::radians(angle));
