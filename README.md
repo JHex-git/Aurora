@@ -17,7 +17,7 @@ A toy OpenGL Render Engine.
 ![Overview](docs/snapshots/overview.png)
 
 ## How to build
-Only MinGW and MSVC are tested. For MinGW, MSYS2 is recommended as the version of its g++ has a good support for C++23. Run `MinGW_build.bat` or `MSVC_build.bat` to build the project.
+Only MSVC is tested. Run `MSVC_build.bat` to build the project.
 
 ## Credits
 Credits for models used in this project can be found in [CREDITS](./CREDITS)
