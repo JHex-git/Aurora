@@ -55,6 +55,11 @@ bool VisualizePass::Init(const std::array<int, 2>& viewport_size)
         }
     }
     m_spatial_hierarchy_vbo = std::make_shared<VertexBuffer>();
+    m_spatial_hierarchy_vao = std::make_shared<VertexArray>();
+    m_spatial_hierarchy_vao->Bind();
+    m_spatial_hierarchy_vbo->Bind();
+    m_spatial_hierarchy_vao->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0});
+    m_spatial_hierarchy_vao->Unbind();
 
     return true;
 }
@@ -70,13 +75,13 @@ void VisualizePass::Render(ContextState& context_state)
         // const auto vertices = SceneManager::GetInstance().GetOctreeVertices();
         const auto vertices = SceneManager::GetInstance().GetBVHVertices();
         m_spatial_hierarchy_vbo->LoadData(vertices, vertices.size());
-        m_spatial_hierarchy_vbo->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0});
         m_spatial_hierarchy_shader_program->Bind();
-        m_spatial_hierarchy_vbo->Bind();
+        m_spatial_hierarchy_vao->Bind();
         m_spatial_hierarchy_shader_program->SetUniform("uViewProjection", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix());
         m_spatial_hierarchy_shader_program->SetUniform("uColor", glm::vec3(1.0f, 0.0f, 0.0f));
         glLineWidth(2.0f);
         glDrawArrays(GL_LINES, 0, vertices.size());
+        m_spatial_hierarchy_vao->Unbind();
     }
 }
 } // namespace Aurora

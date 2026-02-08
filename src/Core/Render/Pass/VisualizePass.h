@@ -6,6 +6,7 @@
 // Aurora include
 #include "Core/Render/Pass/RenderPass.h"
 #include "glWrapper/Shader.h"
+#include "glWrapper/VertexArray.h"
 #include "glWrapper/VertexBuffer.h"
 
 namespace Aurora
@@ -21,6 +22,7 @@ public:
     void Render(ContextState& context_state) override;
 
 private:
+    std::shared_ptr<VertexArray> m_spatial_hierarchy_vao;
     std::shared_ptr<VertexBuffer> m_spatial_hierarchy_vbo;
     std::unique_ptr<ShaderProgram> m_spatial_hierarchy_shader_program;
 };

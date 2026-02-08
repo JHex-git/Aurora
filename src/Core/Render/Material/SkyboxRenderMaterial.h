@@ -7,6 +7,7 @@
 #include "Core/Render/Material/RenderMaterial.h"
 #include "glWrapper/Texture.h"
 #include "Runtime/Scene/Components/Mesh.h"
+#include "glWrapper/VertexArray.h"
 #include "glWrapper/VertexBuffer.h"
 #include "glWrapper/ElementBuffer.h"
 
@@ -32,6 +33,7 @@ private:
     std::array<std::string, 6> m_cubemap_paths;
 
     std::shared_ptr<Mesh> m_mesh;
+    std::vector<std::shared_ptr<VertexArray>> m_vaos;
     std::vector<std::shared_ptr<VertexBuffer>> m_vbos;
     std::vector<std::shared_ptr<ElementBuffer>> m_ebos;
 };

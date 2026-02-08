@@ -93,14 +93,9 @@ void GizmosPass::Render(ContextState& context_state)
         for (size_t i = 0; i < m_current_handle_material->m_mesh->m_submeshes.size(); ++i)
         {
             m_shader_program->SetUniform("uColor", m_current_handle_material->m_mesh->m_submeshes[i].m_color);
-            m_current_handle_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-            m_current_handle_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
-
-            m_current_handle_material->m_vbos[i]->Bind();
-            m_current_handle_material->m_ebos[i]->Bind();
+            m_current_handle_material->m_vaos[i]->Bind();
             glDrawElements(GL_TRIANGLES, m_current_handle_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            m_current_handle_material->m_ebos[i]->Unbind();
-            m_current_handle_material->m_vbos[i]->Unbind();
+            m_current_handle_material->m_vaos[i]->Unbind();
         }
         m_shader_program->Unbind();
     }

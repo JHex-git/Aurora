@@ -68,14 +68,10 @@ void SkyboxPass::Render(ContextState& context_state)
     m_shader_program->SetUniform("uMVP", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix() * model);
     for (size_t i = 0; i < skybox_render_material->m_mesh->m_submeshes.size(); ++i)
     {
-        skybox_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-        
-        skybox_render_material->m_vbos[i]->Bind();
-        skybox_render_material->m_ebos[i]->Bind();
+        skybox_render_material->m_vaos[i]->Bind();
         skybox_render_material->GetCubemapTexture()->Bind();
         glDrawElements(GL_TRIANGLES, skybox_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-        skybox_render_material->m_ebos[i]->Unbind();
-        skybox_render_material->m_vbos[i]->Unbind();
+        skybox_render_material->m_vaos[i]->Unbind();
     }
     m_shader_program->Unbind();
 

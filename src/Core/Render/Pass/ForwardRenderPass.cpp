@@ -253,14 +253,7 @@ void ForwardRenderPass::RenderPointLightShadow(ContextState& context_state) cons
     
                 for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
                 {
-                    material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-                    material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
-                    if (material->m_mesh->HasTextures())
-                        material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tex_coords)});
-    
-                    material->m_vbos[i]->Bind();
-                    material->m_ebos[i]->Bind();
-    
+                    material->m_vaos[i]->Bind();
                     // render shadow map for each face of the cubemap
                     for (auto j = 0; j < k_dirs.size(); ++j)
                     {
@@ -268,8 +261,7 @@ void ForwardRenderPass::RenderPointLightShadow(ContextState& context_state) cons
                         m_shadow_cubemap_fbo->BindDepthCubemapArray(light_index, j);
                         glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
                     }
-                    material->m_ebos[i]->Unbind();
-                    material->m_vbos[i]->Unbind();
+                    material->m_vaos[i]->Unbind();
                 }
             }
             light_index++;
@@ -312,16 +304,9 @@ void ForwardRenderPass::RenderDirectionalLightShadow(ContextState& context_state
 
             for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
             {
-                material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-                material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
-                if (material->m_mesh->HasTextures())
-                    material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tex_coords)});
-
-                material->m_vbos[i]->Bind();
-                material->m_ebos[i]->Bind();
+                material->m_vaos[i]->Bind();
                 glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-                material->m_ebos[i]->Unbind();
-                material->m_vbos[i]->Unbind();
+                material->m_vaos[i]->Unbind();
             }
         }
     }
@@ -397,13 +382,7 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
         for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
         {
             current_unit = material_texture_unit_begin;
-            material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-            material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
-            if (material->m_mesh->HasTextures())
-                material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tex_coords)});
-
-            material->m_vbos[i]->Bind();
-            material->m_ebos[i]->Bind();
+            material->m_vaos[i]->Bind();
 
             if (material->m_mesh->HasTextures())
             {
@@ -421,8 +400,7 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
             }
 
             glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            material->m_ebos[i]->Unbind();
-            material->m_vbos[i]->Unbind();
+            material->m_vaos[i]->Unbind();
         }
     }
 }

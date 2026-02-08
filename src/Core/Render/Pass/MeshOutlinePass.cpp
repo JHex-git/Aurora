@@ -109,11 +109,9 @@ void MeshOutlinePass::Render(ContextState& context_state)
         m_mesh_stencil_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
         for (size_t i = 0; i < selected_mesh_render_material->m_mesh->m_submeshes.size(); ++i)
         {
-            selected_mesh_render_material->m_vbos[i]->Bind();
-            selected_mesh_render_material->m_ebos[i]->Bind();
+            selected_mesh_render_material->m_vaos[i]->Bind();
             glDrawElements(GL_TRIANGLES, selected_mesh_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            selected_mesh_render_material->m_ebos[i]->Unbind();
-            selected_mesh_render_material->m_vbos[i]->Unbind();
+            selected_mesh_render_material->m_vaos[i]->Unbind();
         }
         m_mesh_stencil_shader_program->Unbind();
     }
@@ -145,14 +143,9 @@ void MeshOutlinePass::Render(ContextState& context_state)
         m_outline_shader_program->SetUniform("uColor", glm::vec3(1.0f, 1.0f, 1.0f));
         for (size_t i = 0; i < selected_mesh_render_material->m_mesh->m_submeshes.size(); ++i)
         {
-            selected_mesh_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
-            selected_mesh_render_material->m_vbos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
-
-            selected_mesh_render_material->m_vbos[i]->Bind();
-            selected_mesh_render_material->m_ebos[i]->Bind();
+            selected_mesh_render_material->m_vaos[i]->Bind();
             glDrawElements(GL_TRIANGLES, selected_mesh_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            selected_mesh_render_material->m_ebos[i]->Unbind();
-            selected_mesh_render_material->m_vbos[i]->Unbind();
+            selected_mesh_render_material->m_vaos[i]->Unbind();
         }
         m_outline_shader_program->Unbind();
     }

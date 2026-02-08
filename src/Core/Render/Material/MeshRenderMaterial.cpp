@@ -44,6 +44,20 @@ bool MeshRenderMaterial::Init(std::shared_ptr<SceneObject> owner)
         m_ebos[i] = std::make_shared<ElementBuffer>();
         m_ebos[i]->LoadData(m_mesh->m_submeshes[i].m_indices, m_mesh->m_submeshes[i].m_indices.size());
     }
+
+    m_vaos.resize(m_mesh->m_submeshes.size());
+    for (size_t i = 0; i < m_mesh->m_submeshes.size(); ++i)
+    {
+        m_vaos[i] = std::make_shared<VertexArray>();
+        m_vaos[i]->Bind();
+        m_vbos[i]->Bind();
+        m_ebos[i]->Bind();
+        m_vaos[i]->SetAttribPointer(VertexAttribPointer{0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position)});
+        m_vaos[i]->SetAttribPointer(VertexAttribPointer{1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal)});
+        if (m_mesh->HasTextures())
+            m_vaos[i]->SetAttribPointer(VertexAttribPointer{2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, tex_coords)});
+        m_vaos[i]->Unbind();
+    }
     
     return true;
 }

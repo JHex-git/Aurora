@@ -6,6 +6,7 @@
 // Aurora include
 #include "Core/Render/Material/RenderMaterial.h"
 #include "Runtime/Scene/Components/Mesh.h"
+#include "glWrapper/VertexArray.h"
 #include "glWrapper/VertexBuffer.h"
 #include "glWrapper/ElementBuffer.h"
 #include "Runtime/Scene/SceneObjects/SceneObject.h"
@@ -39,6 +40,7 @@ private:
     MeshRenderMaterialID m_material_id = MeshRenderMaterial::INVALID_MESH_RENDER_MATERIAL_ID;
 
     std::shared_ptr<Mesh> m_mesh;
+    std::vector<std::shared_ptr<VertexArray>> m_vaos;
     std::vector<std::shared_ptr<VertexBuffer>> m_vbos;
     std::vector<std::shared_ptr<ElementBuffer>> m_ebos;
 
