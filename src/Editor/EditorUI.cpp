@@ -592,10 +592,17 @@ void EditorUI::ShowViewPanel()
         return;
     }
 
-    double current_time = static_cast<float>(glfwGetTime());
+    double current_time = glfwGetTime();
     double delta_time = current_time - m_last_frame_time;
     m_last_frame_time = current_time;
-    float fps = 1.0f / delta_time;
+    static float fps = 1.0f / delta_time;
+    constexpr float lerp_speed = 2.0f; 
+    if (delta_time > 0.0)
+    {
+        float current_fps = 1.0f / static_cast<float>(delta_time);
+        // Use high history weight when fps is high to reduce jitter
+        fps = std::lerp(current_fps, fps, std::exp(-static_cast<float>(delta_time) * lerp_speed));
+    }
     ImGui::Text("FPS: %.1f", fps);
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     auto view_pos = ImGui::GetCursorScreenPos(); // left top corner
