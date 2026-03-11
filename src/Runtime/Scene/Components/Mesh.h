@@ -21,6 +21,7 @@ class Mesh : public Component, public std::enable_shared_from_this<Mesh>
     friend class MeshRenderMaterial;
     friend class SkyboxRenderMaterial;
     friend class ForwardRenderPass;
+    friend class DeferredRenderPass;
     friend class MeshOutlinePass;
     friend class SkyboxPass;
     friend class GizmosPass;

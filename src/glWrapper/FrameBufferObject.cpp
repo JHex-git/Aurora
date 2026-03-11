@@ -67,6 +67,17 @@ std::optional<FrameBufferObject> FrameBufferObjectBuilder::Create()
                 return std::nullopt;
             }
         }
+
+        if (m_color_descriptors.size() > 1)
+        {
+            std::vector<GLenum> draw_buffers;
+            draw_buffers.reserve(m_color_descriptors.size());
+            for (size_t i = 0; i < m_color_descriptors.size(); ++i)
+            {
+                draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i));
+            }
+            glDrawBuffers(static_cast<GLsizei>(draw_buffers.size()), draw_buffers.data());
+        }
     }
 
     if (m_depth_descriptor.has_value())

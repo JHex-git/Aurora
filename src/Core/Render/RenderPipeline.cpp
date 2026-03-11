@@ -5,6 +5,7 @@
 // Aurora include
 #include "Core/Render/RenderPipeline.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "Runtime/Scene/RenderSettings.h"
 #include "Runtime/Scene/Components/MeshRenderer.h"
 #include "glWrapper/Utils.h"
 #include "glWrapper/RenderEventInfo.h"
@@ -25,12 +26,14 @@ RenderPipeline::RenderPipeline(std::array<int, 2> render_size) :
 bool RenderPipeline::Init()
 {
     m_mesh_phong_pass = std::make_unique<ForwardRenderPass>();
+    m_deferred_pass = std::make_unique<DeferredRenderPass>();
     m_mesh_outline_pass = std::make_unique<MeshOutlinePass>();
     m_skybox_pass = std::make_unique<SkyboxPass>();
     m_tonemap_pass = std::make_unique<TonemapPass>();
     m_gizmos_pass = std::make_unique<GizmosPass>();
     m_visualize_pass = std::make_unique<VisualizePass>();
     return m_mesh_phong_pass->Init(m_render_size) && 
+           m_deferred_pass->Init(m_render_size) &&
            m_mesh_outline_pass->Init(m_render_size) && 
            m_skybox_pass->Init(m_render_size) && 
            m_tonemap_pass->Init(m_render_size) &&
@@ -44,8 +47,20 @@ void RenderPipeline::Render(ContextState& context_state)
     if (!scene) return;
 
     SCOPED_RENDER_EVENT("Scene Rendering");
-    m_mesh_phong_pass->Render(context_state);
-    Blit(m_mesh_phong_pass->GetFrameBuffer(), m_visualize_pass->GetFrameBuffer());
+    RenderPass* shading_pass = nullptr;
+    const auto& settings = scene->GetRenderSettings();
+    if (settings.GetRenderPath() == RenderSettings::RenderPath::Deferred)
+    {
+        m_deferred_pass->Render(context_state);
+        shading_pass = m_deferred_pass.get();
+    }
+    else
+    {
+        m_mesh_phong_pass->Render(context_state);
+        shading_pass = m_mesh_phong_pass.get();
+    }
+
+    Blit(shading_pass->GetFrameBuffer(), m_visualize_pass->GetFrameBuffer());
     m_visualize_pass->Render(context_state);
     Blit(m_visualize_pass->GetFrameBuffer(), m_skybox_pass->GetFrameBuffer());
     m_skybox_pass->Render(context_state);

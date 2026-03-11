@@ -16,6 +16,12 @@ class SceneObject;
 class RenderSettings : public Serializable
 {
 public:
+    enum class RenderPath
+    {
+        Forward,
+        Deferred
+    };
+
     static constexpr int kDirectionalCascadeMax = 4;
     static constexpr int kDirectionalShadowMapSizeDefault = 1024;
     static constexpr float kDirectionalCascadeSplitLambdaDefault = 0.95f;
@@ -25,12 +31,17 @@ public:
     void Serialize(tinyxml2::XMLElement *node) override;
     void Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner) override;
 
+    static const char* RenderPathToString(RenderPath path);
+    static RenderPath RenderPathFromString(const char* value);
+
+    RenderPath GetRenderPath() const { return m_render_path; }
     int GetDirectionalCascadeCount() const { return m_directional_cascade_count; }
     int GetDirectionalShadowMapSize() const { return m_directional_shadow_map_size; }
     float GetDirectionalSplitLambda() const { return m_directional_split_lambda; }
     float GetDirectionalPaddingXY() const { return m_directional_padding_xy; }
     float GetDirectionalPaddingZ() const { return m_directional_padding_z; }
 
+    void SetRenderPath(RenderPath value) { m_render_path = value; }
     void SetDirectionalCascadeCount(int value)
     {
         m_directional_cascade_count = std::clamp(value, 1, kDirectionalCascadeMax);
@@ -53,6 +64,7 @@ public:
     }
 
 private:
+    RenderPath m_render_path = RenderPath::Forward;
     int m_directional_cascade_count = kDirectionalCascadeMax;
     int m_directional_shadow_map_size = kDirectionalShadowMapSizeDefault;
     float m_directional_split_lambda = kDirectionalCascadeSplitLambdaDefault;

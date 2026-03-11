@@ -19,6 +19,7 @@ using MeshRenderMaterialID = unsigned int;
 class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from_this<MeshRenderMaterial>
 {
     friend class ForwardRenderPass;
+    friend class DeferredRenderPass;
     friend class MeshOutlinePass;
     friend class SkyboxPass;
     friend class GizmosPass;

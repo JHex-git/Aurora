@@ -644,6 +644,16 @@ void EditorUI::ShowRenderSettingsPanel()
         ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, 200.0f);
         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
+        table_row("Render Path", [&]() {
+            const char* render_path_labels[] = { "Forward", "Deferred" };
+            int render_path_index = settings.GetRenderPath() == RenderSettings::RenderPath::Deferred ? 1 : 0;
+            if (ImGui::Combo("##RenderPath", &render_path_index, render_path_labels, IM_ARRAYSIZE(render_path_labels)))
+            {
+                settings.SetRenderPath(render_path_index == 1 ? RenderSettings::RenderPath::Deferred : RenderSettings::RenderPath::Forward);
+                changed = true;
+            }
+        });
+
         int cascade_count = settings.GetDirectionalCascadeCount();
         table_row("Directional Cascades", [&]() {
             if (ImGui::DragInt("##DirectionalCascades", &cascade_count, 0.05f, 1, RenderSettings::kDirectionalCascadeMax))

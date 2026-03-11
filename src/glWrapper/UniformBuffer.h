@@ -16,6 +16,7 @@ public:
 
     void Bind() const;
     void Unbind() const;
+    void BindBase(uint32_t binding_point) const;
 
     void SetData(const void* data, uint32_t size, uint32_t offset = 0) const;
 private:

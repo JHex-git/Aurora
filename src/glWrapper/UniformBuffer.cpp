@@ -33,6 +33,11 @@ void UniformBuffer::Unbind() const
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
+void UniformBuffer::BindBase(uint32_t binding_point) const
+{
+    glBindBufferBase(GL_UNIFORM_BUFFER, binding_point, m_uboID);
+}
+
 void UniformBuffer::SetData(const void* data, uint32_t size, uint32_t offset) const
 {
     Bind();
