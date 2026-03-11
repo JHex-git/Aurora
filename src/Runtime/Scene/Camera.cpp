@@ -34,7 +34,18 @@ void MainCamera::Tilt(float yoffset)
 void MainCamera::Rotate(float xoffset, float yoffset)
 {
     constexpr float sensitivity = 0.0005f;
-    m_camera->SetDirection(m_camera->GetDirection() + m_camera->GetRight() * xoffset * sensitivity + m_camera->GetUp() * yoffset * sensitivity);
+    constexpr float pitch_limit = glm::radians(89.0f);
+
+    m_yaw += xoffset * sensitivity;
+    m_pitch += yoffset * sensitivity;
+    m_pitch = glm::clamp(m_pitch, -pitch_limit, pitch_limit);
+
+    glm::vec3 direction;
+    direction.x = std::cos(m_yaw) * std::cos(m_pitch);
+    direction.y = std::sin(m_pitch);
+    direction.z = std::sin(m_yaw) * std::cos(m_pitch);
+
+    m_camera->SetDirection(direction, m_world_up);
 }
 
 void MainCamera::AdjustForwardSpeed(float yoffset) 

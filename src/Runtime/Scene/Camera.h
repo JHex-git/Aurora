@@ -1,5 +1,6 @@
 #pragma once
 // std include
+#include <cmath>
 #include <memory>
 // thirdparty include
 #include "thirdparty/opengl/glm/glm/glm.hpp"
@@ -35,6 +36,13 @@ public:
     { 
         m_direction = glm::normalize(direction);
         m_right = glm::normalize(glm::cross(m_direction, m_up));
+        m_up = glm::normalize(glm::cross(m_right, m_direction));
+    }
+
+    inline void SetDirection(glm::vec3 direction, glm::vec3 world_up)
+    {
+        m_direction = glm::normalize(direction);
+        m_right = glm::normalize(glm::cross(m_direction, world_up));
         m_up = glm::normalize(glm::cross(m_right, m_direction));
     }
 
@@ -117,11 +125,17 @@ private:
     MainCamera()
     {
         m_camera = std::make_unique<PerspectiveCamera>(glm::vec3(0.f, 0.f, 3.f), glm::vec3(0.f, 0.f, -1.f), glm::vec3(0.f, 1.f, 0.f), 45.f, 800.f / 600.f, 0.1f, 1000.f);
+        const glm::vec3 direction = m_camera->GetDirection();
+        m_pitch = std::asin(glm::clamp(direction.y, -1.0f, 1.0f));
+        m_yaw = std::atan2(direction.z, direction.x);
     }
 
     std::unique_ptr<PerspectiveCamera> m_camera;
     float m_forward_speed = default_forward_speed;
     float m_horizontal_speed = 0.01f;
+    float m_yaw = 0.f;
+    float m_pitch = 0.f;
+    glm::vec3 m_world_up = glm::vec3(0.f, 1.f, 0.f);
 
     constexpr static float min_forward_speed = 0.01f;
     constexpr static float max_forward_speed = 5.f;
