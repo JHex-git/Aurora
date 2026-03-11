@@ -36,13 +36,20 @@ layout(std140) uniform LightBlock
 } uLightBlock;
 uniform samplerCubeArray uTexPointLightShadowMaps;
 
-uniform mat4 uDirectionalLightOrthoVP;
+#ifndef DIRECTIONAL_CASCADE_COUNT
+#define DIRECTIONAL_CASCADE_COUNT 4
+#endif
+
+uniform mat4 uDirectionalLightOrthoVP[DIRECTIONAL_CASCADE_COUNT];
+uniform float uDirectionalLightCascadeSplits[DIRECTIONAL_CASCADE_COUNT];
 uniform vec3 uDirectionalLightDirection;
 uniform vec3 uDirectionalLightColor;
 uniform float uDirectionalLightIntensity;
-uniform float uDirectionalLightNearFarNorm;
+uniform float uDirectionalLightNearFarNorm[DIRECTIONAL_CASCADE_COUNT];
 uniform bool uEnableDirectionalLightShadow;
-uniform sampler2D uDirectionalLightTexShadowMap;
+uniform sampler2DArray uDirectionalLightTexShadowMap;
+
+uniform mat4 uView;
 
 #define POINT_LIGHT_SELF_SHADOW_BIAS 1e-4
 #define DIRECTIONAL_LIGHT_SELF_SHADOW_BIAS 5e-4
@@ -93,18 +100,37 @@ int getPointLightVisibility(float lightDistance, vec3 lightDir, vec3 normal, int
     return lightDistance < occluderDistance + clamp(SELF_SHADOW_FACTOR * (1 - dot(lightDir, normal)), POINT_LIGHT_SELF_SHADOW_BIAS, SELF_SHADOW_FACTOR) ? 1 : 0;   
 }
 
+int selectDirectionalCascade(float viewDepth)
+{
+    int cascade_index = DIRECTIONAL_CASCADE_COUNT - 1;
+    for (int i = 0; i < DIRECTIONAL_CASCADE_COUNT; ++i)
+    {
+        if (viewDepth <= uDirectionalLightCascadeSplits[i])
+        {
+            cascade_index = i;
+            break;
+        }
+    }
+    return cascade_index;
+}
+
 int getDirectionalLightVisibility(vec3 lightDir, vec3 normal)
 {
     if (dot(lightDir, normal) <= 0) return 0;
-    vec4 coords = uDirectionalLightOrthoVP * vec4(vsOut.FragPos, 1);
+
+    float viewDepth = -(uView * vec4(vsOut.FragPos, 1.0)).z;
+    if (viewDepth <= 0.0) return 1;
+    int cascade_index = selectDirectionalCascade(viewDepth);
+
+    vec4 coords = uDirectionalLightOrthoVP[cascade_index] * vec4(vsOut.FragPos, 1);
     coords /= coords.w;
 
     // if not covered by the shadow map, default lit
     if (any(greaterThanEqual(abs(coords.xyz), vec3(1 - 1e-3)))) return 1;
 
     vec2 ortho_coords = (coords.xy + 1) / 2;
-    float occluderDistance = texture(uDirectionalLightTexShadowMap, ortho_coords).r * uDirectionalLightNearFarNorm;
-    float lightDistance = (coords.z + 1) / 2 * uDirectionalLightNearFarNorm;
+    float occluderDistance = texture(uDirectionalLightTexShadowMap, vec3(ortho_coords, float(cascade_index))).r * uDirectionalLightNearFarNorm[cascade_index];
+    float lightDistance = (coords.z + 1) / 2 * uDirectionalLightNearFarNorm[cascade_index];
     return lightDistance < occluderDistance + clamp(SELF_SHADOW_FACTOR * (1 - dot(lightDir, normal)), DIRECTIONAL_LIGHT_SELF_SHADOW_BIAS, SELF_SHADOW_FACTOR) ? 1 : 0;
 }
 

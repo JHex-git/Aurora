@@ -112,6 +112,19 @@ std::optional<FrameBufferObject> FrameBufferObjectBuilder::Create()
                     fbo.m_depth_stencil_attachment = std::move(*depth_attachment);
                 }
             }
+            else if (m_depth_descriptor->texture_type == Texture::Type::Texture2DArray)
+            {
+                auto depth_attachment = TextureBuilder().WithInternalFormat(GL_DEPTH_COMPONENT)
+                                                       .WithWrapS(TextureBuilder::WrapType::ClampToEdge)
+                                                       .WithWrapT(TextureBuilder::WrapType::ClampToEdge)
+                                                       .MakeTexture2DArray(m_width, m_height, GL_DEPTH_COMPONENT, GL_FLOAT, m_depth_descriptor->layers);
+                if (depth_attachment)
+                {
+                    depth_attachment->Bind();
+                    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_attachment->GetID(), 0);
+                    fbo.m_depth_stencil_attachment = std::move(*depth_attachment);
+                }
+            }
             else if (m_depth_descriptor->texture_type == Texture::Type::Texture2D)
             {
                 auto depth_attachment = TextureBuilder().WithInternalFormat(GL_DEPTH_COMPONENT).MakeTexture2D(m_width, m_height, GL_DEPTH_COMPONENT, GL_FLOAT);
@@ -264,6 +277,15 @@ void FrameBufferObject::BindDepthCubemapArray(unsigned int cubemap_index, unsign
     {
         Bind();
         glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth_stencil_attachment->GetID(), 0, cubemap_index * 6 + face);
+    }
+}
+
+void FrameBufferObject::BindDepthTextureLayer(unsigned int layer) const
+{
+    if (m_depth_stencil_attachment.has_value() && m_depth_stencil_attachment->GetType() == Texture::Type::Texture2DArray)
+    {
+        Bind();
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth_stencil_attachment->GetID(), 0, layer);
     }
 }
 

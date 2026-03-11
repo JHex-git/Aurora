@@ -54,6 +54,7 @@ public:
     // friend const AxisAlignedBoundingBox operator*(AxisAlignedBoundingBox&& aabb, glm::mat4&& transform);
 
     const bool IsInside(const AxisAlignedBoundingBox& aabb) const;
+    bool Intersects(const AxisAlignedBoundingBox& aabb) const;
 
     const glm::vec3 GetMin() const { return m_min; }
     const glm::vec3 GetMax() const { return m_max; }

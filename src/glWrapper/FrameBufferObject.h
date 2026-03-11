@@ -86,6 +86,7 @@ public:
     // face: 0 to 5
     void BindDepthCubemapFaceDraw(unsigned int face) const;
     void BindDepthCubemapArray(unsigned int cubemap_index, unsigned int face) const;
+    void BindDepthTextureLayer(unsigned int layer) const;
 
     void BindColorTexture(size_t index, unsigned int unit);
     void BindDepthTexture(unsigned int unit);

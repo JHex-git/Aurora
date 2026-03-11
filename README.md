@@ -11,6 +11,7 @@ A toy OpenGL Render Engine.
 * Skybox
 * Outline
 * Shadow mapping
+* Cascade Shadow Mapping
 * Bounding Volume Hierarchy
 
 ## Snapshots

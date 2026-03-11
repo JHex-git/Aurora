@@ -147,4 +147,11 @@ const bool AxisAlignedBoundingBox::IsInside(const AxisAlignedBoundingBox& aabb) 
     return m_min.x >= aabb.m_min.x && m_min.y >= aabb.m_min.y && m_min.z >= aabb.m_min.z &&
            m_max.x <= aabb.m_max.x && m_max.y <= aabb.m_max.y && m_max.z <= aabb.m_max.z;
 }
+
+bool AxisAlignedBoundingBox::Intersects(const AxisAlignedBoundingBox& aabb) const
+{
+    return m_min.x <= aabb.m_max.x && m_max.x >= aabb.m_min.x &&
+           m_min.y <= aabb.m_max.y && m_max.y >= aabb.m_min.y &&
+           m_min.z <= aabb.m_max.z && m_max.z >= aabb.m_min.z;
+}
 } // namespace Aurora

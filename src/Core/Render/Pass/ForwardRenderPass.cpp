@@ -1,5 +1,8 @@
 // std include
 #include <algorithm>
+#include <cmath>
+#include <limits>
+#include <string>
 // thirdparty include
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 #include "thirdparty/opengl/glm/glm/gtc/matrix_transform.hpp"
@@ -26,6 +29,11 @@ constexpr std::array<glm::vec3, 6> k_dirs = {glm::vec3(1.0f, 0.0f, 0.0f), glm::v
 constexpr std::array<glm::vec3, 6> k_ups = {glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
                                             glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f),
                                             glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f)};
+constexpr int kDirectionalShadowMapSize = 1024;
+constexpr float kDirectionalCascadeSplitLambda = 0.95f;
+// XY padding prevents edge casters from popping; Z padding stabilizes depth range.
+constexpr float kDirectionalCascadePaddingXY = 2.0f;
+constexpr float kDirectionalCascadePaddingZ = 5.0f;
 }
 
 constexpr int MAX_LIGHTS = 3;
@@ -58,9 +66,10 @@ bool ForwardRenderPass::Init(const std::array<int, 2>& viewport_size)
     if (!shadow_cubemap_fbo.has_value()) return false;
     m_shadow_cubemap_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_cubemap_fbo.value()));
 
-    auto shadow_2Dmap_fbo = FrameBufferObjectBuilder(1024, 1024).EnableDepthAttachment({.texture_type = Texture::Type::Texture2D}).Create();
-    if (!shadow_2Dmap_fbo.has_value()) return false;
-    m_shadow_2Dmap_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_2Dmap_fbo.value()));
+    auto shadow_csm_fbo = FrameBufferObjectBuilder(kDirectionalShadowMapSize, kDirectionalShadowMapSize)
+                                        .EnableDepthAttachment({.texture_type = Texture::Type::Texture2DArray, .layers = kDirectionalCascadeCount}).Create();
+    if (!shadow_csm_fbo.has_value()) return false;
+    m_shadow_csm_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_csm_fbo.value()));
 
     m_light_ubo = std::make_unique<UniformBuffer>(sizeof(LightUBO), 0, GL_STATIC_DRAW);
 
@@ -79,6 +88,7 @@ bool ForwardRenderPass::Init(const std::array<int, 2>& viewport_size)
         shaders.emplace_back(ShaderType::FragmentShader);
         auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
         shaders[1].SetFlag("ENABLE_TEXCOORDS");
+        shaders[1].SetOption("DIRECTIONAL_CASCADE_COUNT", kDirectionalCascadeCount);
         if (!shaders[1].Load(frag_path))
         {
             spdlog::error("Failed to load fragment shader {}", frag_path);
@@ -105,6 +115,7 @@ bool ForwardRenderPass::Init(const std::array<int, 2>& viewport_size)
         }
         shaders.emplace_back(ShaderType::FragmentShader);
         auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
+        shaders[1].SetOption("DIRECTIONAL_CASCADE_COUNT", kDirectionalCascadeCount);
         if (!shaders[1].Load(frag_path))
         {
             spdlog::error("Failed to load fragment shader {}", frag_path);
@@ -269,33 +280,63 @@ void ForwardRenderPass::RenderPointLightShadow(ContextState& context_state) cons
     }
 }
 
-void ForwardRenderPass::RenderDirectionalLightShadow(ContextState& context_state, std::shared_ptr<Light> directional_light) const
+void ForwardRenderPass::RenderDirectionalLightShadow(ContextState& context_state, std::shared_ptr<Light> directional_light)
 {   
-    if (directional_light)
+    if (!directional_light)
     {
-        SCOPED_RENDER_EVENT("Directional Light Shadow Pass");
-        const auto light_owner = directional_light->GetOwner().lock();
+        m_directional_cascades_valid = false;
+        return;
+    }
 
-        RenderState render_state;
-        render_state.depth_stencil_state.depth_test_enabled = true;
-        context_state.ApplyRenderState(render_state);
-        m_shadow_2Dmap_fbo->Bind();
+    UpdateDirectionalLightCascades(directional_light);
+    if (!m_directional_cascades_valid)
+        return;
+
+    SCOPED_RENDER_EVENT("Directional Light Shadow Pass");
+
+    RenderState render_state;
+    render_state.depth_stencil_state.depth_test_enabled = true;
+    context_state.ApplyRenderState(render_state);
+
+    m_shadow_map_shader_program->Bind();
+
+    const auto& meshes = SceneManager::GetInstance().GetMeshes();
+    struct ShadowRenderItem
+    {
+        std::shared_ptr<MeshRenderMaterial> material;
+        AxisAlignedBoundingBox aabb;
+    };
+
+    std::vector<ShadowRenderItem> shadow_items;
+    shadow_items.reserve(meshes.size());
+    for (const auto& mesh_it : meshes)
+    {
+        const auto p_mesh = mesh_it.second.lock();
+        if (!p_mesh) continue;
+        const auto p_material = p_mesh->m_render_proxy.lock();
+        const auto material = std::dynamic_pointer_cast<MeshRenderMaterial>(p_material);
+        if (!material) continue;
+        shadow_items.push_back({material, p_mesh->GetAABB()});
+    }
+
+    for (int cascade_index = 0; cascade_index < kDirectionalCascadeCount; ++cascade_index)
+    {
+        const std::string cascade_label = "Directional Cascade " + std::to_string(cascade_index);
+        SCOPED_RENDER_EVENT(cascade_label);
+        m_shadow_csm_fbo->BindDepthTextureLayer(static_cast<unsigned int>(cascade_index));
         glClear(GL_DEPTH_BUFFER_BIT);
-        m_shadow_map_shader_program->Bind();
-        m_shadow_map_shader_program->SetUniform("uProjection", GetOrthoProjectionMatrix());
-        m_shadow_map_shader_program->SetUniform("uView", GetLightSpaceMatrix(directional_light));
+        m_shadow_map_shader_program->SetUniform("uProjection", m_directional_cascades[cascade_index].proj);
+        m_shadow_map_shader_program->SetUniform("uView", m_directional_cascades[cascade_index].view);
 
-        const auto& meshes = SceneManager::GetInstance().GetMeshes();
-        
-        // for (auto& p_material : m_mesh_render_materials)
-        for (const auto& mesh_it : meshes)
+        // World-space cascade bounds for coarse culling of shadow casters.
+        const auto& cascade_aabb = m_directional_cascades[cascade_index].world_aabb;
+        const bool cull_enabled = cascade_aabb.IsValid();
+        for (const auto& item : shadow_items)
         {
-            const auto p_mesh = mesh_it.second.lock();
-            if (!p_mesh) continue;
-            const auto p_material = p_mesh->m_render_proxy.lock();
-            const auto material = std::dynamic_pointer_cast<MeshRenderMaterial>(p_material);
-            if (!material) continue;
-            
+            if (cull_enabled && item.aabb.IsValid() && !cascade_aabb.Intersects(item.aabb))
+                continue;
+            const auto& material = item.material;
+
             const auto material_owner = material->GetOwner().lock();
             SCOPED_RENDER_EVENT(material_owner ? material_owner->GetName() : "mesh render material");
 
@@ -344,16 +385,18 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
             mesh_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
             mesh_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
             mesh_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
-            if (directional_light)
+            if (directional_light && m_directional_cascades_valid)
             {
-                const auto ortho_projection_matrix = GetOrthoProjectionMatrix();
-                const auto ortho_matrix = ortho_projection_matrix * GetLightSpaceMatrix(directional_light);
-                float near_far_norm = std::abs(2.0f / ortho_projection_matrix[2][2]);
-                mesh_shader_program->SetUniform("uDirectionalLightOrthoVP", ortho_matrix);
+                for (int cascade_index = 0; cascade_index < kDirectionalCascadeCount; ++cascade_index)
+                {
+                    const auto cascade_str = std::to_string(cascade_index);
+                    mesh_shader_program->SetUniform("uDirectionalLightOrthoVP[" + cascade_str + "]", m_directional_cascades[cascade_index].vp);
+                    mesh_shader_program->SetUniform("uDirectionalLightCascadeSplits[" + cascade_str + "]", m_directional_cascades[cascade_index].split_depth);
+                    mesh_shader_program->SetUniform("uDirectionalLightNearFarNorm[" + cascade_str + "]", m_directional_cascades[cascade_index].near_far_norm);
+                }
                 mesh_shader_program->SetUniform("uDirectionalLightDirection", directional_light->GetDirection());
                 mesh_shader_program->SetUniform("uDirectionalLightColor", directional_light->GetColor());
                 mesh_shader_program->SetUniform("uDirectionalLightIntensity", directional_light->GetIntensity());
-                mesh_shader_program->SetUniform("uDirectionalLightNearFarNorm", near_far_norm);
                 mesh_shader_program->SetUniform("uEnableDirectionalLightShadow", true);
             }
             else
@@ -376,7 +419,7 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
         // use shadow map to decide the light contribution
         m_shadow_cubemap_fbo->BindDepthTexture(current_unit++);
         mesh_shader_program->SetUniform("uTexPointLightShadowMaps", current_unit - 1);
-        m_shadow_2Dmap_fbo->BindDepthTexture(current_unit++);
+        m_shadow_csm_fbo->BindDepthTexture(current_unit++);
         mesh_shader_program->SetUniform("uDirectionalLightTexShadowMap", current_unit - 1);
         int material_texture_unit_begin = current_unit;
         for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
@@ -405,25 +448,112 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
     }
 }
 
-glm::mat4 ForwardRenderPass::GetOrthoProjectionMatrix() const
+void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> directional_light)
 {
-    const auto perception = 10.f;
-    float far_plane = 1000.f;
-    const auto ortho_far_plane = far_plane;
-    const auto ortho_near_plane = -far_plane;
-    const auto ortho = glm::ortho(-perception, perception, -perception, perception, ortho_near_plane, ortho_far_plane);
-    return ortho;
-}
+    m_directional_cascades_valid = false;
+    if (!directional_light)
+        return;
 
-glm::mat4 ForwardRenderPass::GetLightSpaceMatrix(std::shared_ptr<Light> directional_light) const
-{
-    const auto light_dir = directional_light->GetDirection();
-    glm::vec3 up_dir;
-    if (abs(glm::dot(light_dir, glm::vec3(0.f, 1.f, 0.f))) > 0.999f) // avoid up vector parallel to light direction
-        up_dir = glm::vec3(0.f, 0.f, 1.f);
-    else
-        up_dir = glm::normalize(glm::cross(glm::cross(light_dir, glm::vec3(0.f, 1.f, 0.f)), light_dir));
-    return glm::lookAt(directional_light->GetPosition(), directional_light->GetPosition() + light_dir, up_dir);
+    const auto& camera = MainCamera::GetInstance();
+    const float near_clip = camera.GetNearPlane();
+    const float far_clip = camera.GetFarPlane();
+    if (near_clip <= 0.0f || far_clip <= near_clip)
+        return;
+
+    const glm::mat4 view = camera.GetViewMatrix();
+    const glm::mat4 inv_view = glm::inverse(view);
+    const glm::mat4 proj = camera.GetProjectionMatrix();
+    const float tan_half_fov = 1.0f / proj[1][1];
+    const float aspect = proj[1][1] / proj[0][0];
+
+    const float clip_range = far_clip - near_clip;
+    const float ratio = far_clip / near_clip;
+
+    std::array<float, kDirectionalCascadeCount> splits = {};
+    for (int cascade_index = 0; cascade_index < kDirectionalCascadeCount; ++cascade_index)
+    {
+        const float p = (cascade_index + 1) / static_cast<float>(kDirectionalCascadeCount);
+        const float log = near_clip * std::pow(ratio, p);
+        const float linear = near_clip + clip_range * p;
+        splits[cascade_index] = kDirectionalCascadeSplitLambda * log + (1.0f - kDirectionalCascadeSplitLambda) * linear;
+    }
+
+    const glm::vec3 light_dir = glm::normalize(directional_light->GetDirection());
+    const glm::vec3 up_dir = (std::abs(glm::dot(light_dir, glm::vec3(0.f, 1.f, 0.f))) > 0.999f) ? glm::vec3(0.f, 0.f, 1.f) : glm::vec3(0.f, 1.f, 0.f);
+
+    float prev_split = near_clip;
+    for (int cascade_index = 0; cascade_index < kDirectionalCascadeCount; ++cascade_index)
+    {
+        const float split_dist = splits[cascade_index];
+        const float near_plane = prev_split;
+        const float far_plane = split_dist;
+
+        const float near_height = 2.0f * tan_half_fov * near_plane;
+        const float near_width = near_height * aspect;
+        const float far_height = 2.0f * tan_half_fov * far_plane;
+        const float far_width = far_height * aspect;
+
+        std::array<glm::vec4, 8> corners = {
+            glm::vec4(-near_width / 2.0f, -near_height / 2.0f, -near_plane, 1.0f),
+            glm::vec4( near_width / 2.0f, -near_height / 2.0f, -near_plane, 1.0f),
+            glm::vec4( near_width / 2.0f,  near_height / 2.0f, -near_plane, 1.0f),
+            glm::vec4(-near_width / 2.0f,  near_height / 2.0f, -near_plane, 1.0f),
+            glm::vec4(-far_width / 2.0f, -far_height / 2.0f, -far_plane, 1.0f),
+            glm::vec4( far_width / 2.0f, -far_height / 2.0f, -far_plane, 1.0f),
+            glm::vec4( far_width / 2.0f,  far_height / 2.0f, -far_plane, 1.0f),
+            glm::vec4(-far_width / 2.0f,  far_height / 2.0f, -far_plane, 1.0f)
+        };
+
+        glm::vec3 center(0.0f);
+        for (auto& corner : corners)
+        {
+            corner = inv_view * corner;
+            center += glm::vec3(corner);
+        }
+        center /= 8.0f;
+
+        const glm::mat4 light_view = glm::lookAt(center - light_dir, center, up_dir);
+
+        float min_x = std::numeric_limits<float>::max();
+        float max_x = std::numeric_limits<float>::lowest();
+        float min_y = std::numeric_limits<float>::max();
+        float max_y = std::numeric_limits<float>::lowest();
+        float min_z = std::numeric_limits<float>::max();
+        float max_z = std::numeric_limits<float>::lowest();
+
+        for (const auto& corner : corners)
+        {
+            const glm::vec4 corner_ls = light_view * corner;
+            min_x = std::min(min_x, corner_ls.x);
+            max_x = std::max(max_x, corner_ls.x);
+            min_y = std::min(min_y, corner_ls.y);
+            max_y = std::max(max_y, corner_ls.y);
+            min_z = std::min(min_z, corner_ls.z);
+            max_z = std::max(max_z, corner_ls.z);
+        }
+
+        min_x -= kDirectionalCascadePaddingXY;
+        max_x += kDirectionalCascadePaddingXY;
+        min_y -= kDirectionalCascadePaddingXY;
+        max_y += kDirectionalCascadePaddingXY;
+        min_z -= kDirectionalCascadePaddingZ;
+        max_z += kDirectionalCascadePaddingZ;
+
+        const glm::mat4 light_proj = glm::ortho(min_x, max_x, min_y, max_y, min_z, max_z);
+        const AxisAlignedBoundingBox light_aabb(glm::vec3(min_x, min_y, min_z), glm::vec3(max_x, max_y, max_z));
+        const glm::mat4 inv_light_view = glm::inverse(light_view);
+
+        m_directional_cascades[cascade_index].view = light_view;
+        m_directional_cascades[cascade_index].proj = light_proj;
+        m_directional_cascades[cascade_index].vp = light_proj * light_view;
+        m_directional_cascades[cascade_index].split_depth = split_dist;
+        m_directional_cascades[cascade_index].near_far_norm = max_z - min_z;
+        m_directional_cascades[cascade_index].world_aabb = inv_light_view * light_aabb;
+
+        prev_split = split_dist;
+    }
+
+    m_directional_cascades_valid = true;
 }
 
 } // namespace Aurora
