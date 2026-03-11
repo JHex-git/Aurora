@@ -101,6 +101,12 @@ public:
         return *this;
     }
 
+    TextureBuilder& WithSRGB(bool use_srgb = true)
+    {
+        m_use_srgb = use_srgb;
+        return *this;
+    }
+
     std::optional<Texture> MakeTexture2D(GLsizei width, GLsizei height, GLint format, GLenum type);
     std::optional<Texture> MakeTexture2D(const std::string& path);
     std::optional<Texture> MakeTexture2DArray(GLsizei width, GLsizei height, GLint format, GLenum type, GLsizei num);
@@ -117,6 +123,7 @@ private:
     FilterType m_mag_filter = FilterType::Linear;
     bool m_gen_mipmap = false;
     bool m_require_high_precision = false;
+    bool m_use_srgb = false;
     GLint m_internal_format = GL_RGB;
 };
 

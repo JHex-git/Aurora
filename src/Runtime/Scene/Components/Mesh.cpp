@@ -153,9 +153,12 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         // normal maps
         std::vector<TextureID> normalMaps = LoadMaterialTextures(material, aiTextureType_NORMALS, base_path_str);
         textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-        // height maps
-        std::vector<TextureID> heightMaps = LoadMaterialTextures(material, aiTextureType_HEIGHT, base_path_str);
-        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        // height maps (fallback as normal when no normal map exists)
+        if (normalMaps.empty())
+        {
+            std::vector<TextureID> heightMaps = LoadMaterialTextures(material, aiTextureType_HEIGHT, base_path_str);
+            textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        }
         // metallic maps
         std::vector<TextureID> metallicMaps = LoadMaterialTextures(material, aiTextureType_METALNESS, base_path_str);
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
@@ -184,14 +187,24 @@ std::vector<TextureID> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextur
     {
         aiString path;
         material->GetTexture(type, i, &path);
-        auto type_str = std::string(aiTextureTypeToString(type));
+        auto type_str = ConvertaiTextureTypeToString(type);
         auto full_path = base_path + path.C_Str();
         if (auto it = m_texturePath_to_id.find(full_path); it != m_texturePath_to_id.end())
         {
             texture_ids.push_back(it->second);
             continue;
         }
-        if (auto texture = TextureBuilder().WithWrapS(TextureBuilder::WrapType::ClampToEdge).WithWrapT(TextureBuilder::WrapType::ClampToEdge).MakeTexture2D(full_path))
+        bool use_srgb = type == aiTextureType_DIFFUSE ||
+                        type == aiTextureType_SPECULAR ||
+                        type == aiTextureType_EMISSIVE ||
+                        type == aiTextureType_BASE_COLOR ||
+                        type == aiTextureType_EMISSION_COLOR;
+        TextureBuilder builder;
+        builder.WithWrapS(TextureBuilder::WrapType::ClampToEdge)
+               .WithWrapT(TextureBuilder::WrapType::ClampToEdge);
+        if (use_srgb)
+            builder.WithSRGB(true);
+        if (auto texture = builder.MakeTexture2D(full_path))
         {
             m_texturePath_to_id.insert({full_path, texture->GetID()});
             texture_ids.push_back(texture->GetID());
@@ -203,7 +216,7 @@ std::vector<TextureID> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextur
 
 std::string Mesh::ConvertaiTextureTypeToString(aiTextureType type) const
 {
-    if (type == aiTextureType_HEIGHT) return "Normal";
+    if (type == aiTextureType_NORMALS || type == aiTextureType_HEIGHT) return "Normal";
     return aiTextureTypeToString(type);
 }
 } // namespace Aurora

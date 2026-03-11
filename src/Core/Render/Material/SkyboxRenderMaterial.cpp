@@ -83,7 +83,9 @@ void SkyboxRenderMaterial::Load(std::array<std::string, 6>&& paths)
 {
     m_cubemap_texture = TextureBuilder().WithWrapS(TextureBuilder::WrapType::ClampToEdge)
                                         .WithWrapT(TextureBuilder::WrapType::ClampToEdge)
-                                        .WithWrapR(TextureBuilder::WrapType::ClampToEdge).MakeTextureCubeMap(paths);
+                                        .WithWrapR(TextureBuilder::WrapType::ClampToEdge)
+                                        .WithSRGB(true)
+                                        .MakeTextureCubeMap(paths);
     m_cubemap_paths = std::move(paths);
 }
 } // namespace Aurora

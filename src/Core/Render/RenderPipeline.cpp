@@ -27,11 +27,13 @@ bool RenderPipeline::Init()
     m_mesh_phong_pass = std::make_unique<ForwardRenderPass>();
     m_mesh_outline_pass = std::make_unique<MeshOutlinePass>();
     m_skybox_pass = std::make_unique<SkyboxPass>();
+    m_tonemap_pass = std::make_unique<TonemapPass>();
     m_gizmos_pass = std::make_unique<GizmosPass>();
     m_visualize_pass = std::make_unique<VisualizePass>();
     return m_mesh_phong_pass->Init(m_render_size) && 
            m_mesh_outline_pass->Init(m_render_size) && 
            m_skybox_pass->Init(m_render_size) && 
+           m_tonemap_pass->Init(m_render_size) &&
            m_gizmos_pass->Init(m_render_size) &&
            m_visualize_pass->Init(m_render_size);
 }
@@ -47,7 +49,12 @@ void RenderPipeline::Render(ContextState& context_state)
     m_visualize_pass->Render(context_state);
     Blit(m_visualize_pass->GetFrameBuffer(), m_skybox_pass->GetFrameBuffer());
     m_skybox_pass->Render(context_state);
-    RenderPass* prev_pass = m_skybox_pass.get();
+
+    // Preserve depth for overlays rendered after tonemapping.
+    BlitDepth(m_skybox_pass->GetFrameBuffer(), m_tonemap_pass->GetFrameBuffer());
+    m_tonemap_pass->SetSourceFrameBuffer(m_skybox_pass->GetFrameBuffer());
+    m_tonemap_pass->Render(context_state);
+    RenderPass* prev_pass = m_tonemap_pass.get();
 
     // Outline should be rendered after all to ensure not be occluded
     // Use stencil buffer to avoid covering the selected mesh
@@ -58,7 +65,7 @@ void RenderPipeline::Render(ContextState& context_state)
         if (selected_mesh_renderer != nullptr)
         {
             m_mesh_outline_pass->SetMeshRenderMaterial(selected_mesh_renderer->GetRenderMaterial());
-            BlitColor(m_skybox_pass->GetFrameBuffer(), m_mesh_outline_pass->GetFrameBuffer());
+            BlitColor(m_tonemap_pass->GetFrameBuffer(), m_mesh_outline_pass->GetFrameBuffer());
             m_mesh_outline_pass->Render(context_state);
             prev_pass = m_mesh_outline_pass.get();
         }

@@ -380,7 +380,9 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
     SCOPED_RENDER_EVENT("Shading Pass");
 
     m_fbo->Bind();
-    glClear(GL_DEPTH_BUFFER_BIT);
+    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // Only meshes with BVH intersected with view frustum should be rendered
     std::vector<std::shared_ptr<Mesh>> meshes = SceneManager::GetInstance().GetMeshesInViewFrustum();
 
@@ -453,12 +455,24 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
 
             if (material->m_mesh->HasTextures())
             {
+                bool has_normal_map = false;
                 for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
                 {
                     auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
                     // reserve unit 0 for temporary use
                     surface_texture.texture.Bind(current_unit++);
                     mesh_shader_program->SetUniform(std::string("uTex") + surface_texture.type, current_unit - 1);
+                    if (surface_texture.type == "Normal")
+                    {
+                        has_normal_map = true;
+                    }
+                }
+                if (!has_normal_map)
+                {
+                    // Use a flat normal map when the material doesn't provide one.
+                    auto& normal_texture = TextureManager::GetInstance().GetDummyNormalTexture();
+                    normal_texture.texture.Bind(current_unit++);
+                    mesh_shader_program->SetUniform("uTexNormal", current_unit - 1);
                 }
             }
             else

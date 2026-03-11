@@ -66,9 +66,18 @@ std::optional<Texture> TextureBuilder::MakeTexture2D(const std::string& path)
             break;
         }
 
+        GLint internal_format = m_internal_format;
+        if (m_use_srgb && !m_require_high_precision)
+        {
+            if (channels == 4)
+                internal_format = GL_SRGB_ALPHA;
+            else if (channels == 3)
+                internal_format = GL_SRGB;
+        }
+
         Texture texture(Texture::Type::Texture2D);
         texture.Bind();
-        glTexImage2D(GL_TEXTURE_2D, 0, m_internal_format, width, height, 0, format, m_require_high_precision ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, m_require_high_precision ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(m_min_filter));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(m_mag_filter));
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, static_cast<GLint>(m_wrap_s));
@@ -150,7 +159,15 @@ std::optional<Texture> TextureBuilder::MakeTextureCubeMap(const std::array<std::
                 break;
             }
 
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, format, m_require_high_precision ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
+            GLint internal_format = GL_RGB;
+            if (m_use_srgb && !m_require_high_precision)
+            {
+                if (channels == 4)
+                    internal_format = GL_SRGB_ALPHA;
+                else if (channels == 3)
+                    internal_format = GL_SRGB;
+            }
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internal_format, width, height, 0, format, m_require_high_precision ? GL_FLOAT : GL_UNSIGNED_BYTE, data);
             stbi_image_free(data);
             spdlog::info("Texture {} loaded", paths[i]);
         }

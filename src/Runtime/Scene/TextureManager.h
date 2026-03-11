@@ -25,6 +25,7 @@ public:
     TextureManager& operator=(TextureManager&&) = delete;
 
     SurfaceTexture& GetDummyWhiteTexture();
+    SurfaceTexture& GetDummyNormalTexture();
 
     void Reset() { m_surface_textures.clear(); }
     

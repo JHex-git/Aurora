@@ -7,6 +7,7 @@
 #include "Core/Render/Pass/ForwardRenderPass.h"
 #include "Core/Render/Pass/MeshOutlinePass.h"
 #include "Core/Render/Pass/SkyboxPass.h"
+#include "Core/Render/Pass/TonemapPass.h"
 #include "Core/Render/Pass/GizmosPass.h"
 #include "Core/Render/Pass/VisualizePass.h"
 #include "glWrapper/FrameBufferObject.h"
@@ -31,6 +32,7 @@ private:
     std::unique_ptr<ForwardRenderPass> m_mesh_phong_pass;
     std::unique_ptr<MeshOutlinePass> m_mesh_outline_pass;
     std::unique_ptr<SkyboxPass> m_skybox_pass;
+    std::unique_ptr<TonemapPass> m_tonemap_pass;
     std::unique_ptr<VisualizePass> m_visualize_pass;
     std::unique_ptr<GizmosPass> m_gizmos_pass;
 
