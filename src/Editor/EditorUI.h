@@ -26,6 +26,7 @@ private:
     void ShowMainPanel();
     void ShowScenePanel();
     void ShowInspectorPanel();
+    void ShowRenderSettingsPanel();
     void ShowViewPanel();
     void ShowFileContentPanel();
 
@@ -42,6 +43,7 @@ private:
     bool m_show_new_scene_dialog = false;
     bool m_show_save_scene_dialog = false;
     bool m_show_save_scene_as_dialog = false;
+    bool m_show_render_settings_window = false;
 
     std::map<std::string, std::function<void()>> m_dialog_creator;
     std::map<std::string, ComponentLayoutFunction> m_component_layouter;

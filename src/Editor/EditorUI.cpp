@@ -15,6 +15,7 @@
 #include "Editor/DrawUtils.h"
 #include "Core/Render/RenderSystem.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "Runtime/Scene/RenderSettings.h"
 #include "Utility/FileSystem.h"
 #include "Runtime/GlobalContext.h"
 
@@ -290,6 +291,21 @@ void EditorUI::InitComponentFieldLayouter()
         }
         ImGui::PopID();
     };
+
+    m_component_field_layouter["int"] = [](const std::string& field_name, std::shared_ptr<Component> component) {
+        ImGui::PushID(field_name.c_str());
+        const auto old_int = component->GetField<int>(field_name.c_str());
+        int value = old_int;
+        if (ImGui::DragInt("##int", &value, 1.0f))
+        {
+            if (value != old_int)
+            {
+                component->SetField(field_name.c_str(), value);
+                SceneManager::GetInstance().GetScene()->SetDirty();
+            }
+        }
+        ImGui::PopID();
+    };
 }
 
 void EditorUI::InitComponentLayouter()
@@ -328,6 +344,8 @@ void EditorUI::Layout()
     ShowMainPanel();
     ShowScenePanel();
     ShowInspectorPanel();
+    if (m_show_render_settings_window && SceneManager::GetInstance().GetScene())
+        ShowRenderSettingsPanel();
     ShowViewPanel();
     ShowFileContentPanel();
 
@@ -374,10 +392,14 @@ void EditorUI::ShowMainPanel()
         ImGuiID left_top_container_left;
         ImGuiID left_top_container_right = ImGui::DockBuilderSplitNode(left_top_container, ImGuiDir_Right, 0.75f, nullptr, &left_top_container_left);
 
+        ImGuiID right_top;
+        ImGuiID right_bottom = ImGui::DockBuilderSplitNode(right, ImGuiDir_Down, 0.35f, nullptr, &right_top);
+
         ImGui::DockBuilderDockWindow("Scene", left_top_container_left);
         ImGui::DockBuilderDockWindow("View", left_top_container_right);
         ImGui::DockBuilderDockWindow("File Content", left_container_down);
-        ImGui::DockBuilderDockWindow("Inspector", right);
+        ImGui::DockBuilderDockWindow("Inspector", right_top);
+        ImGui::DockBuilderDockWindow("Render Settings", right_bottom);
     }
     ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_NoWindowMenuButton);
     
@@ -409,6 +431,12 @@ void EditorUI::ShowMainPanel()
                 m_show_save_scene_as_dialog = true;
             }
 
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Window"))
+        {
+            ImGui::MenuItem("Render Settings", nullptr, &m_show_render_settings_window, has_scene);
             ImGui::EndMenu();
         }
 
@@ -580,6 +608,93 @@ void EditorUI::ShowInspectorPanel()
         }
     }
     
+    ImGui::End();
+}
+
+void EditorUI::ShowRenderSettingsPanel()
+{
+    if (!ImGui::Begin("Render Settings", &m_show_render_settings_window))
+    {
+        ImGui::End();
+        return;
+    }
+
+    auto scene = SceneManager::GetInstance().GetScene();
+    if (!scene)
+    {
+        ImGui::Text("No scene loaded.");
+        ImGui::End();
+        return;
+    }
+
+    auto& settings = scene->GetRenderSettings();
+    bool changed = false;
+
+    auto table_row = [](const char* label, const std::function<void()>& draw) {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted(label);
+        ImGui::TableNextColumn();
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        draw();
+    };
+
+    if (ImGui::BeginTable("##RenderSettingsTable", 2, ImGuiTableFlags_SizingStretchProp))
+    {
+        ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+
+        int cascade_count = settings.GetDirectionalCascadeCount();
+        table_row("Directional Cascades", [&]() {
+            if (ImGui::DragInt("##DirectionalCascades", &cascade_count, 0.05f, 1, RenderSettings::kDirectionalCascadeMax))
+            {
+                settings.SetDirectionalCascadeCount(cascade_count);
+                changed = true;
+            }
+        });
+
+        int shadow_map_size = settings.GetDirectionalShadowMapSize();
+        table_row("Directional Shadow Map Size", [&]() {
+            if (ImGui::DragInt("##DirectionalShadowMapSize", &shadow_map_size, 1.0f, 1, 8192))
+            {
+                settings.SetDirectionalShadowMapSize(shadow_map_size);
+                changed = true;
+            }
+        });
+
+        float split_lambda = settings.GetDirectionalSplitLambda();
+        table_row("Directional Split Lambda", [&]() {
+            if (ImGui::DragFloat("##DirectionalSplitLambda", &split_lambda, 0.01f, 0.0f, 1.0f, "%.2f"))
+            {
+                settings.SetDirectionalSplitLambda(split_lambda);
+                changed = true;
+            }
+        });
+
+        float padding_xy = settings.GetDirectionalPaddingXY();
+        table_row("Directional Padding XY", [&]() {
+            if (ImGui::DragFloat("##DirectionalPaddingXY", &padding_xy, 0.1f, 0.0f, 100.0f, "%.2f"))
+            {
+                settings.SetDirectionalPaddingXY(padding_xy);
+                changed = true;
+            }
+        });
+
+        float padding_z = settings.GetDirectionalPaddingZ();
+        table_row("Directional Padding Z", [&]() {
+            if (ImGui::DragFloat("##DirectionalPaddingZ", &padding_z, 0.1f, 0.0f, 100.0f, "%.2f"))
+            {
+                settings.SetDirectionalPaddingZ(padding_z);
+                changed = true;
+            }
+        });
+
+        ImGui::EndTable();
+    }
+
+    if (changed)
+        scene->SetDirty();
+
     ImGui::End();
 }
 

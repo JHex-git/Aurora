@@ -42,6 +42,7 @@ uniform samplerCubeArray uTexPointLightShadowMaps;
 
 uniform mat4 uDirectionalLightOrthoVP[DIRECTIONAL_CASCADE_COUNT];
 uniform float uDirectionalLightCascadeSplits[DIRECTIONAL_CASCADE_COUNT];
+uniform int uDirectionalCascadeCount;
 uniform vec3 uDirectionalLightDirection;
 uniform vec3 uDirectionalLightColor;
 uniform float uDirectionalLightIntensity;
@@ -102,9 +103,10 @@ int getPointLightVisibility(float lightDistance, vec3 lightDir, vec3 normal, int
 
 int selectDirectionalCascade(float viewDepth)
 {
-    int cascade_index = DIRECTIONAL_CASCADE_COUNT - 1;
+    int cascade_index = max(uDirectionalCascadeCount - 1, 0);
     for (int i = 0; i < DIRECTIONAL_CASCADE_COUNT; ++i)
     {
+        if (i >= uDirectionalCascadeCount) break;
         if (viewDepth <= uDirectionalLightCascadeSplits[i])
         {
             cascade_index = i;

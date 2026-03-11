@@ -17,6 +17,7 @@
 #include "glWrapper/Utils.h"
 #include "glWrapper/UniformBuffer.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "Runtime/Scene/RenderSettings.h"
 
 namespace Aurora
 {
@@ -29,11 +30,6 @@ constexpr std::array<glm::vec3, 6> k_dirs = {glm::vec3(1.0f, 0.0f, 0.0f), glm::v
 constexpr std::array<glm::vec3, 6> k_ups = {glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
                                             glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f),
                                             glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f)};
-constexpr int kDirectionalShadowMapSize = 1024;
-constexpr float kDirectionalCascadeSplitLambda = 0.95f;
-// XY padding prevents edge casters from popping; Z padding stabilizes depth range.
-constexpr float kDirectionalCascadePaddingXY = 2.0f;
-constexpr float kDirectionalCascadePaddingZ = 5.0f;
 }
 
 constexpr int MAX_LIGHTS = 3;
@@ -66,8 +62,14 @@ bool ForwardRenderPass::Init(const std::array<int, 2>& viewport_size)
     if (!shadow_cubemap_fbo.has_value()) return false;
     m_shadow_cubemap_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_cubemap_fbo.value()));
 
-    auto shadow_csm_fbo = FrameBufferObjectBuilder(kDirectionalShadowMapSize, kDirectionalShadowMapSize)
-                                        .EnableDepthAttachment({.texture_type = Texture::Type::Texture2DArray, .layers = kDirectionalCascadeCount}).Create();
+    int shadow_map_size = kDirectionalShadowMapSizeDefault;
+    if (auto scene = SceneManager::GetInstance().GetScene())
+    {
+        shadow_map_size = scene->GetRenderSettings().GetDirectionalShadowMapSize();
+    }
+    m_shadow_csm_size_cached = shadow_map_size;
+    auto shadow_csm_fbo = FrameBufferObjectBuilder(shadow_map_size, shadow_map_size)
+                                        .EnableDepthAttachment({.texture_type = Texture::Type::Texture2DArray, .layers = kDirectionalCascadeMax}).Create();
     if (!shadow_csm_fbo.has_value()) return false;
     m_shadow_csm_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_csm_fbo.value()));
 
@@ -88,7 +90,7 @@ bool ForwardRenderPass::Init(const std::array<int, 2>& viewport_size)
         shaders.emplace_back(ShaderType::FragmentShader);
         auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
         shaders[1].SetFlag("ENABLE_TEXCOORDS");
-        shaders[1].SetOption("DIRECTIONAL_CASCADE_COUNT", kDirectionalCascadeCount);
+        shaders[1].SetOption("DIRECTIONAL_CASCADE_COUNT", kDirectionalCascadeMax);
         if (!shaders[1].Load(frag_path))
         {
             spdlog::error("Failed to load fragment shader {}", frag_path);
@@ -115,7 +117,7 @@ bool ForwardRenderPass::Init(const std::array<int, 2>& viewport_size)
         }
         shaders.emplace_back(ShaderType::FragmentShader);
         auto frag_path = FileSystem::GetFullPath("shaders/mesh_phong.frag");
-        shaders[1].SetOption("DIRECTIONAL_CASCADE_COUNT", kDirectionalCascadeCount);
+        shaders[1].SetOption("DIRECTIONAL_CASCADE_COUNT", kDirectionalCascadeMax);
         if (!shaders[1].Load(frag_path))
         {
             spdlog::error("Failed to load fragment shader {}", frag_path);
@@ -161,6 +163,10 @@ bool ForwardRenderPass::Init(const std::array<int, 2>& viewport_size)
 void ForwardRenderPass::Render(ContextState& context_state)
 {
     LazyUpdateLightData();
+    auto scene = SceneManager::GetInstance().GetScene();
+    if (!scene) return;
+    const auto& settings = scene->GetRenderSettings();
+    SyncDirectionalShadowResources(settings);
 
     if (m_tex_mesh_shader_program != nullptr && m_no_tex_mesh_shader_program != nullptr)
     {
@@ -178,9 +184,9 @@ void ForwardRenderPass::Render(ContextState& context_state)
                 }
             }
         }
-        RenderDirectionalLightShadow(context_state, brightestLight);
+        RenderDirectionalLightShadow(context_state, brightestLight, settings);
         RenderPointLightShadow(context_state);
-        RenderForwardShading(context_state, brightestLight);
+        RenderForwardShading(context_state, brightestLight, settings);
     }
 }
 
@@ -280,7 +286,7 @@ void ForwardRenderPass::RenderPointLightShadow(ContextState& context_state) cons
     }
 }
 
-void ForwardRenderPass::RenderDirectionalLightShadow(ContextState& context_state, std::shared_ptr<Light> directional_light)
+void ForwardRenderPass::RenderDirectionalLightShadow(ContextState& context_state, std::shared_ptr<Light> directional_light, const RenderSettings& settings)
 {   
     if (!directional_light)
     {
@@ -288,7 +294,7 @@ void ForwardRenderPass::RenderDirectionalLightShadow(ContextState& context_state
         return;
     }
 
-    UpdateDirectionalLightCascades(directional_light);
+    UpdateDirectionalLightCascades(directional_light, settings);
     if (!m_directional_cascades_valid)
         return;
 
@@ -319,7 +325,8 @@ void ForwardRenderPass::RenderDirectionalLightShadow(ContextState& context_state
         shadow_items.push_back({material, p_mesh->GetAABB()});
     }
 
-    for (int cascade_index = 0; cascade_index < kDirectionalCascadeCount; ++cascade_index)
+    const int cascade_count = settings.GetDirectionalCascadeCount();
+    for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
     {
         const std::string cascade_label = "Directional Cascade " + std::to_string(cascade_index);
         SCOPED_RENDER_EVENT(cascade_label);
@@ -353,7 +360,22 @@ void ForwardRenderPass::RenderDirectionalLightShadow(ContextState& context_state
     }
 }
 
-void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::shared_ptr<Light> directional_light) const
+void ForwardRenderPass::SyncDirectionalShadowResources(const RenderSettings& settings)
+{
+    const int shadow_map_size = settings.GetDirectionalShadowMapSize();
+    if (shadow_map_size == m_shadow_csm_size_cached)
+        return;
+
+    auto shadow_csm_fbo = FrameBufferObjectBuilder(shadow_map_size, shadow_map_size)
+                                        .EnableDepthAttachment({.texture_type = Texture::Type::Texture2DArray, .layers = kDirectionalCascadeMax}).Create();
+    if (shadow_csm_fbo.has_value())
+    {
+        m_shadow_csm_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_csm_fbo.value()));
+        m_shadow_csm_size_cached = shadow_map_size;
+    }
+}
+
+void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::shared_ptr<Light> directional_light, const RenderSettings& settings) const
 {
     SCOPED_RENDER_EVENT("Shading Pass");
 
@@ -387,13 +409,15 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
             mesh_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
             if (directional_light && m_directional_cascades_valid)
             {
-                for (int cascade_index = 0; cascade_index < kDirectionalCascadeCount; ++cascade_index)
+                const int cascade_count = settings.GetDirectionalCascadeCount();
+                for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
                 {
                     const auto cascade_str = std::to_string(cascade_index);
                     mesh_shader_program->SetUniform("uDirectionalLightOrthoVP[" + cascade_str + "]", m_directional_cascades[cascade_index].vp);
                     mesh_shader_program->SetUniform("uDirectionalLightCascadeSplits[" + cascade_str + "]", m_directional_cascades[cascade_index].split_depth);
                     mesh_shader_program->SetUniform("uDirectionalLightNearFarNorm[" + cascade_str + "]", m_directional_cascades[cascade_index].near_far_norm);
                 }
+                mesh_shader_program->SetUniform("uDirectionalCascadeCount", cascade_count);
                 mesh_shader_program->SetUniform("uDirectionalLightDirection", directional_light->GetDirection());
                 mesh_shader_program->SetUniform("uDirectionalLightColor", directional_light->GetColor());
                 mesh_shader_program->SetUniform("uDirectionalLightIntensity", directional_light->GetIntensity());
@@ -448,7 +472,7 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
     }
 }
 
-void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> directional_light)
+void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> directional_light, const RenderSettings& settings)
 {
     m_directional_cascades_valid = false;
     if (!directional_light)
@@ -458,6 +482,9 @@ void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> di
     const float near_clip = camera.GetNearPlane();
     const float far_clip = camera.GetFarPlane();
     if (near_clip <= 0.0f || far_clip <= near_clip)
+        return;
+    const int cascade_count = settings.GetDirectionalCascadeCount();
+    if (cascade_count <= 0)
         return;
 
     const glm::mat4 view = camera.GetViewMatrix();
@@ -469,20 +496,23 @@ void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> di
     const float clip_range = far_clip - near_clip;
     const float ratio = far_clip / near_clip;
 
-    std::array<float, kDirectionalCascadeCount> splits = {};
-    for (int cascade_index = 0; cascade_index < kDirectionalCascadeCount; ++cascade_index)
+    std::array<float, kDirectionalCascadeMax> splits = {};
+    const float split_lambda = settings.GetDirectionalSplitLambda();
+    for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
     {
-        const float p = (cascade_index + 1) / static_cast<float>(kDirectionalCascadeCount);
+        const float p = (cascade_index + 1) / static_cast<float>(cascade_count);
         const float log = near_clip * std::pow(ratio, p);
         const float linear = near_clip + clip_range * p;
-        splits[cascade_index] = kDirectionalCascadeSplitLambda * log + (1.0f - kDirectionalCascadeSplitLambda) * linear;
+        splits[cascade_index] = split_lambda * log + (1.0f - split_lambda) * linear;
     }
 
     const glm::vec3 light_dir = glm::normalize(directional_light->GetDirection());
     const glm::vec3 up_dir = (std::abs(glm::dot(light_dir, glm::vec3(0.f, 1.f, 0.f))) > 0.999f) ? glm::vec3(0.f, 0.f, 1.f) : glm::vec3(0.f, 1.f, 0.f);
 
     float prev_split = near_clip;
-    for (int cascade_index = 0; cascade_index < kDirectionalCascadeCount; ++cascade_index)
+    const float padding_xy = settings.GetDirectionalPaddingXY();
+    const float padding_z = settings.GetDirectionalPaddingZ();
+    for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
     {
         const float split_dist = splits[cascade_index];
         const float near_plane = prev_split;
@@ -532,12 +562,13 @@ void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> di
             max_z = std::max(max_z, corner_ls.z);
         }
 
-        min_x -= kDirectionalCascadePaddingXY;
-        max_x += kDirectionalCascadePaddingXY;
-        min_y -= kDirectionalCascadePaddingXY;
-        max_y += kDirectionalCascadePaddingXY;
-        min_z -= kDirectionalCascadePaddingZ;
-        max_z += kDirectionalCascadePaddingZ;
+        // XY padding prevents edge casters from popping; Z padding stabilizes depth range.
+        min_x -= padding_xy;
+        max_x += padding_xy;
+        min_y -= padding_xy;
+        max_y += padding_xy;
+        min_z -= padding_z;
+        max_z += padding_z;
 
         const glm::mat4 light_proj = glm::ortho(min_x, max_x, min_y, max_y, min_z, max_z);
         const AxisAlignedBoundingBox light_aabb(glm::vec3(min_x, min_y, min_z), glm::vec3(max_x, max_y, max_z));

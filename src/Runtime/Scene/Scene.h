@@ -7,6 +7,7 @@
 // Aurora include
 #include "Utility/Serializable.h"
 #include "Runtime/Scene/SceneObjects/SceneObject.h"
+#include "Runtime/Scene/RenderSettings.h"
 
 namespace Aurora
 {
@@ -32,6 +33,9 @@ public:
     void AddPointLight();
     void AddDirectionalLight();
 
+    RenderSettings& GetRenderSettings();
+    const RenderSettings& GetRenderSettings() const;
+
     void SetSelectedSceneObject(std::shared_ptr<SceneObject> scene_object);
     void DeleteSelectedSceneObject();
     void SetDirty();
@@ -46,6 +50,7 @@ private:
 
     std::vector<std::shared_ptr<SceneObject>> m_scene_objects;
     std::weak_ptr<SceneObject> m_selected_scene_object;
+    RenderSettings m_render_settings;
     std::string m_scene_path;
     bool m_is_dirty = false;
 };

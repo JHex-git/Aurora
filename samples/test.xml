@@ -1,4 +1,5 @@
 <Scene>
+    <RenderSettings DirectionalCascadeCount="4" DirectionalShadowMapSize="1024" DirectionalSplitLambda="0.94999999" DirectionalPaddingXY="2" DirectionalPaddingZ="50"/>
     <SceneObject Name="plane">
         <Transform>
             <Position X="-2.7" Y="-2.8" Z="0"/>

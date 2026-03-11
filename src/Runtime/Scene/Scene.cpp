@@ -58,6 +58,16 @@ void Scene::AddDirectionalLight()
     SetDirty();
 }
 
+RenderSettings& Scene::GetRenderSettings()
+{
+    return m_render_settings;
+}
+
+const RenderSettings& Scene::GetRenderSettings() const
+{
+    return m_render_settings;
+}
+
 void Scene::SetSelectedSceneObject(std::shared_ptr<SceneObject> scene_object)
 {
     if (m_selected_scene_object.lock() != scene_object)
@@ -77,6 +87,9 @@ void Scene::Update()
 
 void Scene::Serialize(tinyxml2::XMLElement *node)
 {
+    auto settings_node = node->InsertNewChildElement("Temp");
+    m_render_settings.Serialize(settings_node);
+
     for (auto& scene_object : m_scene_objects)
     {
         auto child_node = node->InsertNewChildElement("Temp");
@@ -87,11 +100,16 @@ void Scene::Serialize(tinyxml2::XMLElement *node)
 void Scene::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> owner)
 {
     m_scene_objects.clear();
+    m_render_settings = RenderSettings();
 
     auto p_child = node->FirstChildElement();
     while (p_child != nullptr)
     {
-        if (!strcmp(p_child->Name(), "SceneObject"))
+        if (!strcmp(p_child->Name(), "RenderSettings"))
+        {
+            m_render_settings.Deserialize(p_child, nullptr);
+        }
+        else if (!strcmp(p_child->Name(), "SceneObject"))
         {
             auto scene_object = std::make_shared<SceneObject>();
             scene_object->Deserialize(p_child, nullptr);
@@ -103,6 +121,7 @@ void Scene::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneO
         }
         p_child = p_child->NextSiblingElement();
     }
+
 }
 
 void Scene::SetDirty()
