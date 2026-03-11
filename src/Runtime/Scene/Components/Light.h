@@ -62,6 +62,9 @@ public:
     glm::vec2 GetCullDistance() const { return m_cull_distance; }
 
     static constexpr LightID INVALID_LIGHT_ID = 0;
+protected:
+    void OnFieldChanged(const std::string& field_name) override;
+
 private:
 
     REFLECTABLE_DECLARE(Light, m_color)

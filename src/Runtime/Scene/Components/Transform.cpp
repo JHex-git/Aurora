@@ -4,6 +4,8 @@
 #include "thirdparty/opengl/glm/glm/gtc/quaternion.hpp"
 // Aurora include
 #include "Runtime/Scene/Components/Transform.h"
+#include "Runtime/Scene/Components/Light.h"
+#include "Runtime/Scene/LightManager.h"
 
 namespace Aurora
 {
@@ -51,5 +53,19 @@ Transform::operator glm::mat4() const
 {
     glm::quat rotation = glm::quat(glm::radians(m_rotation));
     return glm::translate(glm::identity<glm::mat4>(), m_position) * glm::mat4_cast(rotation) * glm::scale(glm::identity<glm::mat4>(), m_scale);
+}
+
+void Transform::OnFieldChanged(const std::string& field_name)
+{
+    if (field_name != "m_position" && field_name != "m_rotation")
+        return;
+
+    if (auto owner = GetOwner().lock())
+    {
+        if (owner->TryGetComponent<Light>())
+        {
+            LightManager::GetInstance().NotifyLightChanged();
+        }
+    }
 }
 } // namespace Aurora

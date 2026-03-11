@@ -28,6 +28,9 @@ public:
 
     operator glm::mat4() const;
 
+protected:
+    void OnFieldChanged(const std::string& field_name) override;
+
 private:
     REFLECTABLE_DECLARE(Transform, m_position)
     glm::vec3 m_position = glm::vec3(0.0f);

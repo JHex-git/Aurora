@@ -45,6 +45,11 @@ void LightManager::RemoveLightEventListener(ILightEventListener* listener)
     }
 }
 
+void LightManager::NotifyLightChanged() const
+{
+    NotifyLightEventListeners();
+}
+
 void LightManager::NotifyLightEventListeners() const
 {
     for (ILightEventListener* listener : m_light_event_listeners)

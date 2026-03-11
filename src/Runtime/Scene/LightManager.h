@@ -29,6 +29,7 @@ public:
     LightID RegisterLight(std::shared_ptr<Light> light);
     void UnregisterLight(LightID lightID);
     const std::unordered_map<LightID, std::weak_ptr<Light>>& GetLights(Light::Type type) { return m_lights[static_cast<size_t>(type)]; }
+    void NotifyLightChanged() const;
 
     void AddLightEventListener(ILightEventListener* listener);
     void RemoveLightEventListener(ILightEventListener* listener);

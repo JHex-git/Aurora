@@ -54,6 +54,16 @@ void Light::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneO
     Init(owner);
 }
 
+void Light::OnFieldChanged(const std::string& field_name)
+{
+    if (m_light_id == INVALID_LIGHT_ID) return;
+
+    if (field_name == "m_color" || field_name == "m_intensity" || field_name == "m_cull_distance")
+    {
+        LightManager::GetInstance().NotifyLightChanged();
+    }
+}
+
 glm::vec3 Light::GetDirection()
 {
     auto scene_object = m_scene_object.lock();

@@ -27,6 +27,7 @@ public:
     {
         auto field = ReflectionFactory::GetInstance().GetField(GetClassReflectName(), field_name);
         *reinterpret_cast<T*>(reinterpret_cast<uint64_t>(GetThis()) + field->GetOffset()) = value;
+        OnFieldChanged(field_name);
     }
 
     const std::string& GetClassReflectName() const { return m_class_name; }
@@ -34,6 +35,7 @@ public:
 protected:
     // This function should be overriden if multiple inheritance is used.
     virtual void* GetThis() { return this; }
+    virtual void OnFieldChanged(const std::string& field_name) {}
     
     std::string m_class_name;
 };

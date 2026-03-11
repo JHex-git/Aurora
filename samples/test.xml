@@ -59,7 +59,7 @@
         </Transform>
         <LightComponent Type="Point">
             <Color R="1" G="0" B="0"/>
-            <Intensity Value="2.23"/>
+            <Intensity Value="4.9000001"/>
         </LightComponent>
     </SceneObject>
     <SceneObject Name="green_Light">
@@ -70,7 +70,7 @@
         </Transform>
         <LightComponent Type="Point">
             <Color R="0" G="1" B="0"/>
-            <Intensity Value="2.8"/>
+            <Intensity Value="6.0300002"/>
         </LightComponent>
     </SceneObject>
     <SceneObject Name="backpack">
