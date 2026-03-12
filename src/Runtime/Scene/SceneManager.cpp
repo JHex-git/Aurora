@@ -144,7 +144,11 @@ std::vector<std::shared_ptr<Mesh>> SceneManager::GetMeshesInViewFrustum() const
                 }
                 else
                 {
-                    meshes.push_back(node->m_mesh.lock());
+                    auto mesh = node->m_mesh.lock();
+                    if (mesh)
+                    {
+                        meshes.push_back(mesh);
+                    }
                 }
             }
         }
