@@ -699,6 +699,44 @@ void EditorUI::ShowRenderSettingsPanel()
             }
         });
 
+        int directional_pcf_samples = settings.GetDirectionalShadowPcfSamples();
+        int directional_pcf_index = (directional_pcf_samples - 1) / 2;
+        int directional_pcf_max_index = (RenderSettings::kDirectionalShadowPcfSamplesMax - 1) / 2;
+        table_row("Directional Shadow PCF Kernel", [&]() {
+            if (ImGui::SliderInt("##DirectionalShadowPcfSamples", &directional_pcf_index, 0, directional_pcf_max_index, ""))
+            {
+                directional_pcf_samples = directional_pcf_index * 2 + 1;
+                settings.SetDirectionalShadowPcfSamples(directional_pcf_samples);
+                changed = true;
+            }
+            char buf[8];
+            ImFormatString(buf, IM_ARRAYSIZE(buf), "%d", directional_pcf_index * 2 + 1);
+            ImVec2 min = ImGui::GetItemRectMin();
+            ImVec2 max = ImGui::GetItemRectMax();
+            ImVec2 size = ImGui::CalcTextSize(buf);
+            ImGui::GetWindowDrawList()->AddText(ImVec2((min.x + max.x - size.x) * 0.5f, (min.y + max.y - size.y) * 0.5f),
+                                                ImGui::GetColorU32(ImGuiCol_Text), buf);
+        });
+
+        int point_pcf_samples = settings.GetPointShadowPcfSamples();
+        int point_pcf_index = (point_pcf_samples - 1) / 2;
+        int point_pcf_max_index = (RenderSettings::kPointShadowPcfSamplesMax - 1) / 2;
+        table_row("Point Shadow PCF Kernel", [&]() {
+            if (ImGui::SliderInt("##PointShadowPcfSamples", &point_pcf_index, 0, point_pcf_max_index, ""))
+            {
+                point_pcf_samples = point_pcf_index * 2 + 1;
+                settings.SetPointShadowPcfSamples(point_pcf_samples);
+                changed = true;
+            }
+            char buf[8];
+            ImFormatString(buf, IM_ARRAYSIZE(buf), "%d", point_pcf_index * 2 + 1);
+            ImVec2 min = ImGui::GetItemRectMin();
+            ImVec2 max = ImGui::GetItemRectMax();
+            ImVec2 size = ImGui::CalcTextSize(buf);
+            ImGui::GetWindowDrawList()->AddText(ImVec2((min.x + max.x - size.x) * 0.5f, (min.y + max.y - size.y) * 0.5f),
+                                                ImGui::GetColorU32(ImGuiCol_Text), buf);
+        });
+
         ImGui::EndTable();
     }
 

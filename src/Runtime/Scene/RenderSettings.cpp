@@ -35,6 +35,8 @@ void RenderSettings::Serialize(tinyxml2::XMLElement *node)
     node->SetAttribute("DirectionalSplitLambda", m_directional_split_lambda);
     node->SetAttribute("DirectionalPaddingXY", m_directional_padding_xy);
     node->SetAttribute("DirectionalPaddingZ", m_directional_padding_z);
+    node->SetAttribute("DirectionalShadowPcfSamples", m_directional_shadow_pcf_samples);
+    node->SetAttribute("PointShadowPcfSamples", m_point_shadow_pcf_samples);
 }
 
 void RenderSettings::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneObject> /*owner*/)
@@ -45,6 +47,8 @@ void RenderSettings::Deserialize(const tinyxml2::XMLElement *node, std::shared_p
     float split_lambda = m_directional_split_lambda;
     float padding_xy = m_directional_padding_xy;
     float padding_z = m_directional_padding_z;
+    int directional_pcf_samples = m_directional_shadow_pcf_samples;
+    int point_pcf_samples = m_point_shadow_pcf_samples;
 
     node->QueryStringAttribute("RenderPath", &render_path_str);
     node->QueryIntAttribute("DirectionalCascadeCount", &cascade_count);
@@ -52,6 +56,8 @@ void RenderSettings::Deserialize(const tinyxml2::XMLElement *node, std::shared_p
     node->QueryFloatAttribute("DirectionalSplitLambda", &split_lambda);
     node->QueryFloatAttribute("DirectionalPaddingXY", &padding_xy);
     node->QueryFloatAttribute("DirectionalPaddingZ", &padding_z);
+    node->QueryIntAttribute("DirectionalShadowPcfSamples", &directional_pcf_samples);
+    node->QueryIntAttribute("PointShadowPcfSamples", &point_pcf_samples);
 
     if (render_path_str)
         m_render_path = RenderPathFromString(render_path_str);
@@ -60,5 +66,7 @@ void RenderSettings::Deserialize(const tinyxml2::XMLElement *node, std::shared_p
     SetDirectionalSplitLambda(split_lambda);
     SetDirectionalPaddingXY(padding_xy);
     SetDirectionalPaddingZ(padding_z);
+    SetDirectionalShadowPcfSamples(directional_pcf_samples);
+    SetPointShadowPcfSamples(point_pcf_samples);
 }
 } // namespace Aurora

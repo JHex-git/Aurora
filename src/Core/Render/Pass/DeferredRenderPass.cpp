@@ -275,7 +275,9 @@ void DeferredRenderPass::RenderPointLightShadow(ContextState& context_state) con
             RenderState render_state;
             render_state.depth_stencil_state.depth_test_enabled = true;
             context_state.ApplyRenderState(render_state);
-            const auto perspective = glm::perspective(glm::radians(90.f), 1.f, 0.1f, 1000.f);
+            const float near_plane = light->GetCullDistance().x;
+            const float far_plane = light->GetCullDistance().y;
+            const auto perspective = glm::perspective(glm::radians(90.f), 1.f, near_plane, far_plane);
 
             m_shadow_map_shader_program->Bind();
             m_shadow_map_shader_program->SetUniform("uProjection", perspective);
@@ -518,6 +520,8 @@ void DeferredRenderPass::RenderLightingPass(ContextState& context_state, std::sh
 
     m_lighting_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
     m_lighting_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
+    m_lighting_shader_program->SetUniform("uDirectionalShadowPcfSamples", settings.GetDirectionalShadowPcfSamples());
+    m_lighting_shader_program->SetUniform("uPointShadowPcfSamples", settings.GetPointShadowPcfSamples());
 
     if (directional_light && m_directional_cascades_valid)
     {
