@@ -6,7 +6,8 @@ in vec2 vTexCoord;
 uniform sampler2D uGBufferPosition;
 uniform sampler2D uGBufferNormal;
 uniform sampler2D uGBufferAlbedo;
-uniform sampler2D uGBufferSpecular;
+uniform sampler2D uGBufferMRA;
+uniform sampler2D uGBufferEmissive;
 
 uniform vec3 uViewPos;
 uniform mat4 uView;
@@ -151,6 +152,105 @@ float getDirectionalLightVisibility(vec3 lightDir, vec3 normal, vec3 frag_pos)
     return visibility / float(kernel * kernel);
 }
 
+const float PI = 3.14159265359;
+
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+    return a2 / max(denom, 1e-4);
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;
+    float denom = NdotV * (1.0 - k) + k;
+    return NdotV / max(denom, 1e-4);
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+void PointLighting(vec3 frag_pos, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0, inout vec3 lighting)
+{
+    for (int light_index = 0; light_index < uLightBlock.numLights; ++light_index)
+    {
+        Light light = uLightBlock.lights[light_index];
+        vec3 lightDir = normalize(light.lightPos - frag_pos);
+        float NdotL = max(dot(normal, lightDir), 0.0);
+        float lightDistance = length(light.lightPos - frag_pos);
+        float attenuation = 1.0 / (1.0 + 0.09 * lightDistance + 0.032 * lightDistance * lightDistance);
+        vec3 lightContrib = light.lightIntensity * light.lightColor * attenuation;
+        float visibility = getPointLightVisibility(lightDistance, lightDir, normal, light_index, light.cullDistance.x, light.cullDistance.y);
+
+        if (NdotL > 0.0)
+        {
+            vec3 L = lightDir;
+            vec3 H = normalize(viewDir + L);
+            vec3 radiance = lightContrib;
+
+            float NDF = DistributionGGX(normal, H, roughness);
+            float G = GeometrySmith(normal, viewDir, L, roughness);
+            vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
+
+            vec3 numerator = NDF * G * F;
+            float denom = 4.0 * max(dot(normal, viewDir), 0.0) * NdotL + 1e-4;
+            vec3 specular = numerator / denom;
+
+            vec3 kS = F;
+            vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+            vec3 diffuse = kD * albedo / PI;
+
+            lighting += (diffuse + specular) * radiance * NdotL * visibility;
+        }
+    }
+}
+
+void DirectionalLighting(vec3 frag_pos, vec3 normal, vec3 viewDir, vec3 albedo, float metallic, float roughness, vec3 F0, inout vec3 lighting)
+{
+    vec3 lightDir = -uDirectionalLightDirection;
+
+    float visibility = getDirectionalLightVisibility(lightDir, normal, frag_pos);
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    if (NdotL > 0.0)
+    {
+        vec3 L = normalize(lightDir);
+        vec3 H = normalize(viewDir + L);
+        vec3 radiance = uDirectionalLightIntensity * uDirectionalLightColor;
+
+        float NDF = DistributionGGX(normal, H, roughness);
+        float G = GeometrySmith(normal, viewDir, L, roughness);
+        vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
+
+        vec3 numerator = NDF * G * F;
+        float denom = 4.0 * max(dot(normal, viewDir), 0.0) * NdotL + 1e-4;
+        vec3 specular = numerator / denom;
+
+        vec3 kS = F;
+        vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+        vec3 diffuse = kD * albedo / PI;
+
+        lighting += (diffuse + specular) * radiance * NdotL * visibility;
+    }
+}
+
 vec3 calculateSpecular(vec3 lightDir, vec3 normal, vec3 viewDir, vec3 lightContrib)
 {
     float specularStrength = 0.5;
@@ -159,7 +259,7 @@ vec3 calculateSpecular(vec3 lightDir, vec3 normal, vec3 viewDir, vec3 lightContr
     return specularStrength * spec * lightContrib;
 }
 
-void PointLighting(vec3 frag_pos, vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor, inout vec3 lighting)
+void PointLightingPhong(vec3 frag_pos, vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor, inout vec3 lighting)
 {
     for (int light_index = 0; light_index < uLightBlock.numLights; ++light_index)
     {
@@ -170,7 +270,6 @@ void PointLighting(vec3 frag_pos, vec3 normal, vec3 viewDir, vec3 diffuseColor, 
         float attenuation = 1.0 / (1.0 + 0.09 * lightDistance + 0.032 * lightDistance * lightDistance);
         vec3 lightContrib = light.lightIntensity * light.lightColor * attenuation;
         vec3 diffuse = diff * lightContrib;
-
         vec3 specular = calculateSpecular(lightDir, normal, viewDir, lightContrib);
 
         float visibility = getPointLightVisibility(lightDistance, lightDir, normal, light_index, light.cullDistance.x, light.cullDistance.y);
@@ -179,10 +278,9 @@ void PointLighting(vec3 frag_pos, vec3 normal, vec3 viewDir, vec3 diffuseColor, 
     }
 }
 
-void DirectionalLighting(vec3 frag_pos, vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor, inout vec3 lighting)
+void DirectionalLightingPhong(vec3 frag_pos, vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor, inout vec3 lighting)
 {
     vec3 lightDir = -uDirectionalLightDirection;
-
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 lightContrib = uDirectionalLightIntensity * uDirectionalLightColor;
     vec3 diffuse = diff * lightContrib;
@@ -197,8 +295,10 @@ void main()
 {
     vec3 frag_pos = texture(uGBufferPosition, vTexCoord).rgb;
     vec3 normal = texture(uGBufferNormal, vTexCoord).rgb;
-    vec3 diffuseColor = texture(uGBufferAlbedo, vTexCoord).rgb;
-    vec3 specularColor = texture(uGBufferSpecular, vTexCoord).rgb;
+    vec4 albedoPacked = texture(uGBufferAlbedo, vTexCoord);
+    vec3 albedo = albedoPacked.rgb;
+    vec3 mra = texture(uGBufferMRA, vTexCoord).rgb;
+    vec3 emissive = texture(uGBufferEmissive, vTexCoord).rgb;
 
     if (length(normal) < 1e-4)
     {
@@ -208,12 +308,33 @@ void main()
 
     normal = normalize(normal);
     vec3 viewDir = normalize(uViewPos - frag_pos);
-    float ambientStrength = 0.1;
-    vec3 lighting = ambientStrength * diffuseColor;
-    if (uEnableDirectionalLightShadow)
+    // gAlbedo.a encodes shading model: 0 = Phong, 1 = PBR.
+    if (albedoPacked.a < 0.5)
     {
-        DirectionalLighting(frag_pos, normal, viewDir, diffuseColor, specularColor, lighting);
+        vec3 specularColor = mra;
+        float ambientStrength = 0.1;
+        vec3 lighting = ambientStrength * albedo;
+        if (uEnableDirectionalLightShadow)
+        {
+            DirectionalLightingPhong(frag_pos, normal, viewDir, albedo, specularColor, lighting);
+        }
+        PointLightingPhong(frag_pos, normal, viewDir, albedo, specularColor, lighting);
+        color = vec4(lighting, 1.0);
     }
-    PointLighting(frag_pos, normal, viewDir, diffuseColor, specularColor, lighting);
-    color = vec4(lighting, 1.0);
+    else
+    {
+        // PBR shading path.
+        float metallic = clamp(mra.r, 0.0, 1.0);
+        float roughness = clamp(mra.g, 0.04, 1.0);
+        float ao = clamp(mra.b, 0.0, 1.0);
+        vec3 F0 = mix(vec3(0.04), albedo, metallic);
+        vec3 lighting = vec3(0.0);
+        if (uEnableDirectionalLightShadow)
+        {
+            DirectionalLighting(frag_pos, normal, viewDir, albedo, metallic, roughness, F0, lighting);
+        }
+        PointLighting(frag_pos, normal, viewDir, albedo, metallic, roughness, F0, lighting);
+        vec3 ambient = vec3(0.03) * albedo * ao;
+        color = vec4(ambient + lighting + emissive, 1.0);
+    }
 }

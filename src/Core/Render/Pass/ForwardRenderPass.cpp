@@ -9,6 +9,7 @@
 // Aurora include
 #include "Core/Render/Pass/ForwardRenderPass.h"
 #include "Core/Render/LightUBO.h"
+#include "Core/Render/PbrUtils.h"
 #include "Utility/FileSystem.h"
 #include "glWrapper/Shader.h"
 #include "glWrapper/RenderEventInfo.h"
@@ -31,6 +32,7 @@ constexpr std::array<glm::vec3, 6> k_dirs = {glm::vec3(1.0f, 0.0f, 0.0f), glm::v
 constexpr std::array<glm::vec3, 6> k_ups = {glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
                                             glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f),
                                             glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f)};
+
 }
 
 ForwardRenderPass::ForwardRenderPass() = default;
@@ -380,106 +382,127 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
     // Only meshes with BVH intersected with view frustum should be rendered
     std::vector<std::shared_ptr<Mesh>> meshes = SceneManager::GetInstance().GetMeshesInViewFrustum();
 
-    // Split meshes into two groups: with textures and without textures
+    // Split meshes into three groups: PBR textures, non-PBR textures, and no textures
     // This is to minimize shader program switches
-    auto mesh_split = std::partition(meshes.begin(), meshes.end(), 
+    auto pbr_split = std::partition(meshes.begin(), meshes.end(),
+        [](const std::shared_ptr<Mesh>& mesh) {
+            return mesh->HasPBRTextures();
+        });
+
+    auto textured_split = std::partition(pbr_split, meshes.end(),
         [](const std::shared_ptr<Mesh>& mesh) {
             return mesh->HasTextures();
         });
-    
-    auto mesh_shader_program = m_tex_mesh_shader_program.get();
-    bool program_uninitialized = true;
-    for (const auto& mesh : meshes)
+
+    auto init_program = [&](ShaderProgram* mesh_shader_program)
     {
-        if (mesh_split != meshes.end() && mesh == *mesh_split)
+        mesh_shader_program->Bind();
+        mesh_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
+        mesh_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
+        mesh_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
+        if (directional_light && m_directional_cascades_valid)
         {
-            mesh_shader_program = m_no_tex_mesh_shader_program.get();
-            program_uninitialized = true;
-        }
-
-        if (program_uninitialized)
-        {
-            mesh_shader_program->Bind();
-            mesh_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
-            mesh_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
-            mesh_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
-            if (directional_light && m_directional_cascades_valid)
+            const int cascade_count = settings.GetDirectionalCascadeCount();
+            for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
             {
-                const int cascade_count = settings.GetDirectionalCascadeCount();
-                for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
+                const auto cascade_str = std::to_string(cascade_index);
+                mesh_shader_program->SetUniform("uDirectionalLightOrthoVP[" + cascade_str + "]", m_directional_cascades[cascade_index].vp);
+                mesh_shader_program->SetUniform("uDirectionalLightCascadeSplits[" + cascade_str + "]", m_directional_cascades[cascade_index].split_depth);
+                mesh_shader_program->SetUniform("uDirectionalLightNearFarNorm[" + cascade_str + "]", m_directional_cascades[cascade_index].near_far_norm);
+            }
+            mesh_shader_program->SetUniform("uDirectionalCascadeCount", cascade_count);
+            mesh_shader_program->SetUniform("uDirectionalLightDirection", directional_light->GetDirection());
+            mesh_shader_program->SetUniform("uDirectionalLightColor", directional_light->GetColor());
+            mesh_shader_program->SetUniform("uDirectionalLightIntensity", directional_light->GetIntensity());
+            mesh_shader_program->SetUniform("uEnableDirectionalLightShadow", true);
+        }
+        else
+        {
+            mesh_shader_program->SetUniform("uEnableDirectionalLightShadow", false);
+        }
+        mesh_shader_program->SetUniform("uDirectionalShadowPcfSamples", settings.GetDirectionalShadowPcfSamples());
+        mesh_shader_program->SetUniform("uPointShadowPcfSamples", settings.GetPointShadowPcfSamples());
+    };
+
+    // Forward shading uses one fragment shader for both Phong and PBR; uUsePBR selects the path.
+    auto render_meshes = [&](auto begin, auto end, ShaderProgram* mesh_shader_program, bool use_pbr, bool use_textures)
+    {
+        if (begin == end || mesh_shader_program == nullptr) return;
+
+        init_program(mesh_shader_program);
+        for (auto it = begin; it != end; ++it)
+        {
+            const auto& mesh = *it;
+            auto p_material = mesh->m_render_proxy.lock();
+            auto material = std::dynamic_pointer_cast<MeshRenderMaterial>(p_material);
+            if (!material) continue;
+
+            const auto material_owner = material->GetOwner().lock();
+            SCOPED_RENDER_EVENT(material_owner ? material_owner->GetName() : "mesh render material");
+
+            const glm::mat4 model = material->GetModelMatrix();
+            mesh_shader_program->SetUniform("uModel", model);
+
+            int current_unit = 1;
+            // use shadow map to decide the light contribution
+            m_shadow_cubemap_fbo->BindDepthTexture(current_unit++);
+            mesh_shader_program->SetUniform("uTexPointLightShadowMaps", current_unit - 1);
+            m_shadow_csm_fbo->BindDepthTexture(current_unit++);
+            mesh_shader_program->SetUniform("uDirectionalLightTexShadowMap", current_unit - 1);
+            int material_texture_unit_begin = current_unit;
+
+            for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
+            {
+                current_unit = material_texture_unit_begin;
+                material->m_vaos[i]->Bind();
+
+                if (use_pbr)
                 {
-                    const auto cascade_str = std::to_string(cascade_index);
-                    mesh_shader_program->SetUniform("uDirectionalLightOrthoVP[" + cascade_str + "]", m_directional_cascades[cascade_index].vp);
-                    mesh_shader_program->SetUniform("uDirectionalLightCascadeSplits[" + cascade_str + "]", m_directional_cascades[cascade_index].split_depth);
-                    mesh_shader_program->SetUniform("uDirectionalLightNearFarNorm[" + cascade_str + "]", m_directional_cascades[cascade_index].near_far_norm);
+                    // PBR path
+                    mesh_shader_program->SetUniform("uUsePBR", true);
+                    const auto& submesh = material->m_mesh->m_submeshes[i];
+                    auto& texture_manager = TextureManager::GetInstance();
+                    BindPbrTextures(submesh, texture_manager, *mesh_shader_program, current_unit);
                 }
-                mesh_shader_program->SetUniform("uDirectionalCascadeCount", cascade_count);
-                mesh_shader_program->SetUniform("uDirectionalLightDirection", directional_light->GetDirection());
-                mesh_shader_program->SetUniform("uDirectionalLightColor", directional_light->GetColor());
-                mesh_shader_program->SetUniform("uDirectionalLightIntensity", directional_light->GetIntensity());
-                mesh_shader_program->SetUniform("uEnableDirectionalLightShadow", true);
-            }
-            else
-            {
-                mesh_shader_program->SetUniform("uEnableDirectionalLightShadow", false);
-            }
-            mesh_shader_program->SetUniform("uDirectionalShadowPcfSamples", settings.GetDirectionalShadowPcfSamples());
-            mesh_shader_program->SetUniform("uPointShadowPcfSamples", settings.GetPointShadowPcfSamples());
-            program_uninitialized = false;
-        }
-
-        auto p_material = mesh->m_render_proxy.lock();
-        auto material = std::dynamic_pointer_cast<MeshRenderMaterial>(p_material);
-        const auto material_owner = material->GetOwner().lock();
-        SCOPED_RENDER_EVENT(material_owner ? material_owner->GetName() : "mesh render material");
-        if (!material) continue;
-
-        const glm::mat4 model = material->GetModelMatrix();
-        mesh_shader_program->SetUniform("uModel", model);
-
-        int current_unit = 1;
-        // use shadow map to decide the light contribution
-        m_shadow_cubemap_fbo->BindDepthTexture(current_unit++);
-        mesh_shader_program->SetUniform("uTexPointLightShadowMaps", current_unit - 1);
-        m_shadow_csm_fbo->BindDepthTexture(current_unit++);
-        mesh_shader_program->SetUniform("uDirectionalLightTexShadowMap", current_unit - 1);
-        int material_texture_unit_begin = current_unit;
-        for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
-        {
-            current_unit = material_texture_unit_begin;
-            material->m_vaos[i]->Bind();
-
-            if (material->m_mesh->HasTextures())
-            {
-                bool has_normal_map = false;
-                for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
+                else if (use_textures)
                 {
-                    auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
-                    // reserve unit 0 for temporary use
-                    surface_texture.texture.Bind(current_unit++);
-                    mesh_shader_program->SetUniform(std::string("uTex") + surface_texture.type, current_unit - 1);
-                    if (surface_texture.type == "Normal")
+                    // Phong path with textures.
+                    mesh_shader_program->SetUniform("uUsePBR", false);
+                    bool has_normal_map = false;
+                    for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
                     {
-                        has_normal_map = true;
+                        auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
+                        // reserve unit 0 for temporary use
+                        surface_texture.texture.Bind(current_unit++);
+                        mesh_shader_program->SetUniform(std::string("uTex") + surface_texture.type, current_unit - 1);
+                        if (surface_texture.type == "Normal")
+                        {
+                            has_normal_map = true;
+                        }
+                    }
+                    if (!has_normal_map)
+                    {
+                        // Use a flat normal map when the material doesn't provide one.
+                        auto& normal_texture = TextureManager::GetInstance().GetDummyNormalTexture();
+                        normal_texture.texture.Bind(current_unit++);
+                        mesh_shader_program->SetUniform("uTexNormal", current_unit - 1);
                     }
                 }
-                if (!has_normal_map)
+                else
                 {
-                    // Use a flat normal map when the material doesn't provide one.
-                    auto& normal_texture = TextureManager::GetInstance().GetDummyNormalTexture();
-                    normal_texture.texture.Bind(current_unit++);
-                    mesh_shader_program->SetUniform("uTexNormal", current_unit - 1);
+                    // Phong path without textures (solid color).
+                    mesh_shader_program->SetUniform("uColor", material->m_mesh->m_submeshes[i].m_color);
                 }
-            }
-            else
-            {
-                mesh_shader_program->SetUniform("uColor", material->m_mesh->m_submeshes[i].m_color);
-            }
 
-            glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            material->m_vaos[i]->Unbind();
+                glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
+                material->m_vaos[i]->Unbind();
+            }
         }
-    }
+    };
+
+    render_meshes(meshes.begin(), pbr_split, m_tex_mesh_shader_program.get(), true, true);
+    render_meshes(pbr_split, textured_split, m_tex_mesh_shader_program.get(), false, true);
+    render_meshes(textured_split, meshes.end(), m_no_tex_mesh_shader_program.get(), false, false);
 }
 
 void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> directional_light, const RenderSettings& settings)

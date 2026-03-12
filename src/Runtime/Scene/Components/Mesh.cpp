@@ -1,4 +1,6 @@
 // std include
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 // thirdparty include
 #include "thirdparty/assimp/include/assimp/Importer.hpp"
@@ -45,7 +47,16 @@ void Mesh::Update()
 bool Mesh::Load(const std::string& file_path)
 {
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(FileSystem::GetFullPath(file_path), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenBoundingBoxes);
+    std::filesystem::path path(file_path);
+    auto ext = path.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    unsigned int process_flags = aiProcess_Triangulate | aiProcess_GenBoundingBoxes;
+    if (ext != ".gltf" && ext != ".glb")
+    {
+        process_flags |= aiProcess_FlipUVs;
+    }
+    const aiScene* scene = importer.ReadFile(FileSystem::GetFullPath(file_path), process_flags);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
         spdlog::error("Failed to load mesh: {}", importer.GetErrorString());
@@ -144,6 +155,9 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         auto base_path_str = base_path.remove_filename().string();
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
         material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+        // base color maps (PBR)
+        std::vector<TextureID> baseColorMaps = LoadMaterialTextures(material, aiTextureType_BASE_COLOR, base_path_str);
+        textures.insert(textures.end(), baseColorMaps.begin(), baseColorMaps.end());
         // diffuse maps
         std::vector<TextureID> albedoMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, base_path_str);
         textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
@@ -162,9 +176,9 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         // metallic maps
         std::vector<TextureID> metallicMaps = LoadMaterialTextures(material, aiTextureType_METALNESS, base_path_str);
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
-        // // roughness maps
-        // std::vector<TextureID> roughnessMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, base_path_str);
-        // textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
+        // roughness maps
+        std::vector<TextureID> roughnessMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, base_path_str);
+        textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
         // emissive maps
         std::vector<TextureID> emissiveMaps = LoadMaterialTextures(material, aiTextureType_EMISSIVE, base_path_str);
         textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
@@ -174,6 +188,11 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         // ao maps
         std::vector<TextureID> aoMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, base_path_str);
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
+
+        if (!baseColorMaps.empty() || !metallicMaps.empty() || !roughnessMaps.empty())
+        {
+            m_has_pbr_textures = true;
+        }
     }
 
     if (!textures.empty()) m_has_textures = true;

@@ -7,7 +7,8 @@ A toy OpenGL Render Engine.
 | Windows | <p>[![MSVC CI](https://github.com/JHex-git/Aurora/actions/workflows/MSVC.yml/badge.svg)](https://github.com/JHex-git/Aurora/actions/workflows/MSVC.yml)</p> |
 
 ## Feature
-* Phong shading(Forward & Deferred)
+* Phong shading (Forward & Deferred)
+* Physically Based Shading
 * Skybox
 * Outline
 * Shadow mapping

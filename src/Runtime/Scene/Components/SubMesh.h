@@ -3,6 +3,7 @@
 #include <vector>
 // thirdparty include
 #include "thirdparty/opengl/glm/glm/glm.hpp"
+#include "thirdparty/assimp/include/assimp/scene.h"
 // Aurora include
 #include "glWrapper/Texture.h"
 
@@ -33,6 +34,9 @@ public:
     SubMesh(SubMesh&& other) = default;
 
     ~SubMesh() = default;
+
+    const std::vector<TextureID>& GetTextures() const { return m_textures; }
+    const glm::vec3& GetColor() const { return m_color; }
 
 private:
     std::vector<Vertex> m_vertices;

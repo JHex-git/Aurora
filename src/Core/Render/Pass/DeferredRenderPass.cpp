@@ -9,6 +9,7 @@
 // Aurora include
 #include "Core/Render/Pass/DeferredRenderPass.h"
 #include "Core/Render/LightUBO.h"
+#include "Core/Render/PbrUtils.h"
 #include "Utility/FileSystem.h"
 #include "glWrapper/RenderEventInfo.h"
 #include "Runtime/Scene/Camera.h"
@@ -29,17 +30,19 @@ constexpr std::array<glm::vec3, 6> k_dirs = {glm::vec3(1.0f, 0.0f, 0.0f), glm::v
 constexpr std::array<glm::vec3, 6> k_ups = {glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
                                             glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f),
                                             glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f)};
+
 }
 
 bool DeferredRenderPass::Init(const std::array<int, 2>& viewport_size)
 {
     if (!RenderPass::Init(viewport_size)) return false;
 
-    // G-buffer attachment order: position, normal, albedo, specular.
+    // G-buffer attachment order: position, normal, albedo, MRA, emissive.
     auto gbuffer = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
                                         .AddColorAttachment({.internal_format = GL_RGB16F, .format = GL_RGB, .type = GL_FLOAT})
                                         .AddColorAttachment({.internal_format = GL_RGB16F, .format = GL_RGB, .type = GL_FLOAT})
                                         .AddColorAttachment({.internal_format = GL_RGBA, .format = GL_RGBA, .type = GL_UNSIGNED_BYTE})
+                                        .AddColorAttachment({.internal_format = GL_RGB, .format = GL_RGB, .type = GL_UNSIGNED_BYTE})
                                         .AddColorAttachment({.internal_format = GL_RGB, .format = GL_RGB, .type = GL_UNSIGNED_BYTE})
                                         .EnableDepthAttachment({}).Create();
     if (!gbuffer.has_value()) return false;
@@ -425,6 +428,10 @@ void DeferredRenderPass::RenderGeometryPass(ContextState& context_state) const
 
     auto mesh_shader_program = m_gbuffer_tex_shader_program.get();
     bool program_uninitialized = true;
+    auto& texture_manager = TextureManager::GetInstance();
+    auto& dummy_white = texture_manager.GetDummyWhiteTexture();
+    auto& dummy_black = texture_manager.GetDummyBlackTexture();
+    auto& dummy_normal = texture_manager.GetDummyNormalTexture();
     for (const auto& mesh : meshes)
     {
         if (mesh_split != meshes.end() && mesh == *mesh_split)
@@ -460,24 +467,67 @@ void DeferredRenderPass::RenderGeometryPass(ContextState& context_state) const
 
             if (material->m_mesh->HasTextures())
             {
-                bool has_normal_map = false;
-                for (int j = 0; j < material->m_mesh->m_submeshes[i].m_textures.size(); ++j)
+                const auto& submesh = material->m_mesh->m_submeshes[i];
+                // Match Forward's PBR/Phong decision so both paths render the same material model.
+                const bool use_pbr = material->m_mesh->HasPBRTextures();
+                mesh_shader_program->SetUniform("uUsePBR", use_pbr);
+
+                if (use_pbr)
                 {
-                    auto& surface_texture = TextureManager::GetInstance().GetTexture(material->m_mesh->m_submeshes[i].m_textures[j]);
-                    surface_texture.texture.Bind(current_unit++);
-                    mesh_shader_program->SetUniform(std::string("uTex") + surface_texture.type, current_unit - 1);
-                    if (surface_texture.type == "Normal")
-                        has_normal_map = true;
+                    BindPbrTextures(submesh, texture_manager, *mesh_shader_program, current_unit);
                 }
-                if (!has_normal_map)
+                else
                 {
-                    auto& normal_texture = TextureManager::GetInstance().GetDummyNormalTexture();
-                    normal_texture.texture.Bind(current_unit++);
-                    mesh_shader_program->SetUniform("uTexNormal", current_unit - 1);
+                    bool has_normal_map = false;
+                    bool has_diffuse_map = false;
+                    bool has_specular_map = false;
+                    for (int j = 0; j < submesh.m_textures.size(); ++j)
+                    {
+                        auto& surface_texture = texture_manager.GetTexture(submesh.m_textures[j]);
+                        surface_texture.texture.Bind(current_unit++);
+                        mesh_shader_program->SetUniform(std::string("uTex") + surface_texture.type, current_unit - 1);
+                        if (surface_texture.type == "Normal")
+                        {
+                            has_normal_map = true;
+                        }
+                        else if (surface_texture.type == "Diffuse")
+                        {
+                            has_diffuse_map = true;
+                        }
+                        else if (surface_texture.type == "Specular")
+                        {
+                            has_specular_map = true;
+                        }
+                    }
+
+                    if (!has_diffuse_map)
+                    {
+                        dummy_white.texture.Bind(current_unit++);
+                        mesh_shader_program->SetUniform("uTexDiffuse", current_unit - 1);
+                    }
+                    if (!has_specular_map)
+                    {
+                        dummy_black.texture.Bind(current_unit++);
+                        mesh_shader_program->SetUniform("uTexSpecular", current_unit - 1);
+                    }
+
+                    mesh_shader_program->SetUniform("uHasNormalMap", has_normal_map);
+                    if (!has_normal_map)
+                    {
+                        dummy_normal.texture.Bind(current_unit++);
+                        mesh_shader_program->SetUniform("uTexNormal", current_unit - 1);
+                    }
+
+                    mesh_shader_program->SetUniform("uHasBaseColorMap", false);
+                    mesh_shader_program->SetUniform("uHasMetalnessMap", false);
+                    mesh_shader_program->SetUniform("uHasRoughnessMap", false);
+                    mesh_shader_program->SetUniform("uHasAoMap", false);
+                    mesh_shader_program->SetUniform("uHasEmissiveMap", false);
                 }
             }
             else
             {
+                mesh_shader_program->SetUniform("uUsePBR", false);
                 mesh_shader_program->SetUniform("uColor", material->m_mesh->m_submeshes[i].m_color);
             }
 
@@ -507,13 +557,15 @@ void DeferredRenderPass::RenderLightingPass(ContextState& context_state, std::sh
     m_gbuffer_fbo->BindColorTexture(0, 0); // position
     m_gbuffer_fbo->BindColorTexture(1, 1); // normal
     m_gbuffer_fbo->BindColorTexture(2, 2); // albedo
-    m_gbuffer_fbo->BindColorTexture(3, 3); // specular
+    m_gbuffer_fbo->BindColorTexture(3, 3); // mra
+    m_gbuffer_fbo->BindColorTexture(4, 4); // emissive
     m_lighting_shader_program->SetUniform("uGBufferPosition", 0);
     m_lighting_shader_program->SetUniform("uGBufferNormal", 1);
     m_lighting_shader_program->SetUniform("uGBufferAlbedo", 2);
-    m_lighting_shader_program->SetUniform("uGBufferSpecular", 3);
+    m_lighting_shader_program->SetUniform("uGBufferMRA", 3);
+    m_lighting_shader_program->SetUniform("uGBufferEmissive", 4);
 
-    int current_unit = 4;
+    int current_unit = 5;
     m_shadow_cubemap_fbo->BindDepthTexture(current_unit++);
     m_lighting_shader_program->SetUniform("uTexPointLightShadowMaps", current_unit - 1);
     m_shadow_csm_fbo->BindDepthTexture(current_unit++);

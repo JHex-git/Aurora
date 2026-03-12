@@ -11,9 +11,29 @@ in VS_Out {
 out vec4 color;
 
 #ifdef ENABLE_TEXCOORDS
+// Switch between Phong and PBR without changing shader programs.
+uniform bool uUsePBR;
+
 uniform sampler2D uTexDiffuse;
 uniform sampler2D uTexSpecular;
 uniform sampler2D uTexNormal;
+uniform sampler2D uTexBaseColor;
+uniform sampler2D uTexMetalness;
+uniform sampler2D uTexRoughness;
+uniform sampler2D uTexAmbientOcclusion;
+uniform sampler2D uTexEmissive;
+
+uniform bool uHasBaseColorMap;
+uniform bool uHasNormalMap;
+uniform bool uHasMetalnessMap;
+uniform bool uHasRoughnessMap;
+uniform bool uHasAoMap;
+uniform bool uHasEmissiveMap;
+
+uniform vec3 uBaseColorFactor;
+uniform float uMetallicFactor;
+uniform float uRoughnessFactor;
+uniform vec3 uEmissiveFactor;
 #else
 uniform vec3 uColor;
 #endif
@@ -196,6 +216,42 @@ vec3 calculateSpecular(vec3 lightDir, vec3 normal, vec3 viewDir, vec3 lightContr
     return specularStrength * spec * lightContrib;
 }
 
+const float PI = 3.14159265359;
+
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float NdotH = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH * NdotH;
+
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+    return a2 / max(denom, 1e-4);
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;
+    float denom = NdotV * (1.0 - k) + k;
+    return NdotV / max(denom, 1e-4);
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+    return ggx1 * ggx2;
+}
+
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
 void PointLighting(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 specularColor, inout vec3 lighting)
 {
     for (int light_index = 0; light_index < uLightBlock.numLights; ++light_index)
@@ -232,28 +288,140 @@ void DirectionalLighting(vec3 normal, vec3 viewDir, vec3 diffuseColor, vec3 spec
 
 void main()
 {
-    // Diffuse
 #ifdef ENABLE_TEXCOORDS
-    vec3 normal = getNormalFromMap();
+    vec3 normal = normalize(vsOut.Normal);
+    if (uUsePBR)
+    {
+        if (uHasNormalMap)
+        {
+            normal = getNormalFromMap();
+        }
+    }
+    else
+    {
+        normal = getNormalFromMap();
+    }
 #else
     vec3 normal = normalize(vsOut.Normal);
 #endif
+    vec3 viewDir = normalize(uViewPos - vsOut.FragPos);
 
 #ifdef ENABLE_TEXCOORDS
-    vec3 diffuseColor = texture(uTexDiffuse, vsOut.TexCoords).rgb;
-    vec3 specularColor = texture(uTexSpecular, vsOut.TexCoords).rgb;
+    if (uUsePBR)
+    {
+        // PBR shading path.
+        vec3 albedo = uBaseColorFactor;
+        if (uHasBaseColorMap)
+        {
+            albedo *= texture(uTexBaseColor, vsOut.TexCoords).rgb;
+        }
+
+        float metallic = uMetallicFactor;
+        float roughness = uRoughnessFactor;
+        if (uHasMetalnessMap)
+        {
+            vec3 mrSample = texture(uTexMetalness, vsOut.TexCoords).rgb;
+            metallic *= mrSample.b;
+            if (!uHasRoughnessMap)
+            {
+                roughness = uRoughnessFactor * mrSample.g;
+            }
+        }
+        if (uHasRoughnessMap)
+        {
+            roughness = uRoughnessFactor * texture(uTexRoughness, vsOut.TexCoords).r;
+        }
+
+        float ao = uHasAoMap ? texture(uTexAmbientOcclusion, vsOut.TexCoords).r : 1.0;
+        vec3 emissive = uHasEmissiveMap ? texture(uTexEmissive, vsOut.TexCoords).rgb * uEmissiveFactor : vec3(0.0);
+
+        metallic = clamp(metallic, 0.0, 1.0);
+        roughness = clamp(roughness, 0.04, 1.0);
+
+        vec3 F0 = mix(vec3(0.04), albedo, metallic);
+        vec3 Lo = vec3(0.0);
+
+        for (int light_index = 0; light_index < uLightBlock.numLights; ++light_index)
+        {
+            Light light = uLightBlock.lights[light_index];
+            vec3 L = normalize(light.lightPos - vsOut.FragPos);
+            vec3 H = normalize(viewDir + L);
+            float distance = length(light.lightPos - vsOut.FragPos);
+            float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
+            vec3 radiance = light.lightIntensity * light.lightColor * attenuation;
+            float NdotL = max(dot(normal, L), 0.0);
+            if (NdotL > 0.0)
+            {
+                float NDF = DistributionGGX(normal, H, roughness);
+                float G = GeometrySmith(normal, viewDir, L, roughness);
+                vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
+
+                vec3 numerator = NDF * G * F;
+                float denom = 4.0 * max(dot(normal, viewDir), 0.0) * NdotL + 1e-4;
+                vec3 specular = numerator / denom;
+
+                vec3 kS = F;
+                vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+                vec3 diffuse = kD * albedo / PI;
+
+                float visibility = getPointLightVisibility(distance, L, normal, light_index, light.cullDistance.x, light.cullDistance.y);
+                Lo += (diffuse + specular) * radiance * NdotL * visibility;
+            }
+        }
+
+        if (uEnableDirectionalLightShadow)
+        {
+            vec3 L = normalize(-uDirectionalLightDirection);
+            vec3 H = normalize(viewDir + L);
+            float NdotL = max(dot(normal, L), 0.0);
+            if (NdotL > 0.0)
+            {
+                vec3 radiance = uDirectionalLightIntensity * uDirectionalLightColor;
+                float NDF = DistributionGGX(normal, H, roughness);
+                float G = GeometrySmith(normal, viewDir, L, roughness);
+                vec3 F = fresnelSchlick(max(dot(H, viewDir), 0.0), F0);
+
+                vec3 numerator = NDF * G * F;
+                float denom = 4.0 * max(dot(normal, viewDir), 0.0) * NdotL + 1e-4;
+                vec3 specular = numerator / denom;
+
+                vec3 kS = F;
+                vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+                vec3 diffuse = kD * albedo / PI;
+
+                float visibility = getDirectionalLightVisibility(L, normal);
+                Lo += (diffuse + specular) * radiance * NdotL * visibility;
+            }
+        }
+
+        vec3 ambient = vec3(0.03) * albedo * ao;
+        vec3 result = ambient + Lo + emissive;
+        color = vec4(result, 1.0);
+    }
+    else
+    {
+        // Phong shading path.
+        vec3 diffuseColor = texture(uTexDiffuse, vsOut.TexCoords).rgb;
+        vec3 specularColor = texture(uTexSpecular, vsOut.TexCoords).rgb;
+        float ambientStrength = 0.1;
+        vec3 lighting = ambientStrength * diffuseColor;
+        if (uEnableDirectionalLightShadow)
+        {
+            DirectionalLighting(normal, viewDir, diffuseColor, specularColor, lighting);
+        }
+        PointLighting(normal, viewDir, diffuseColor, specularColor, lighting);
+        color = vec4(lighting, 1.0);
+    }
 #else
     vec3 diffuseColor = uColor;
     vec3 specularColor = diffuseColor;
-#endif
-
     float ambientStrength = 0.1;
     vec3 lighting = ambientStrength * diffuseColor;
-    vec3 viewDir = normalize(uViewPos - vsOut.FragPos);
     if (uEnableDirectionalLightShadow)
     {
         DirectionalLighting(normal, viewDir, diffuseColor, specularColor, lighting);
     }
     PointLighting(normal, viewDir, diffuseColor, specularColor, lighting);
     color = vec4(lighting, 1.0);
+#endif
 }

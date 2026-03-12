@@ -3,7 +3,8 @@
 layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gAlbedo;
-layout (location = 3) out vec3 gSpecular;
+layout (location = 3) out vec3 gMRA;
+layout (location = 4) out vec3 gEmissive;
 
 in VS_Out {
     vec3 FragPos;
@@ -14,9 +15,28 @@ in VS_Out {
 } vsOut;
 
 #ifdef ENABLE_TEXCOORDS
+uniform sampler2D uTexBaseColor;
 uniform sampler2D uTexDiffuse;
 uniform sampler2D uTexSpecular;
 uniform sampler2D uTexNormal;
+uniform sampler2D uTexMetalness;
+uniform sampler2D uTexRoughness;
+uniform sampler2D uTexAmbientOcclusion;
+uniform sampler2D uTexEmissive;
+
+uniform bool uUsePBR;
+
+uniform bool uHasBaseColorMap;
+uniform bool uHasNormalMap;
+uniform bool uHasMetalnessMap;
+uniform bool uHasRoughnessMap;
+uniform bool uHasAoMap;
+uniform bool uHasEmissiveMap;
+
+uniform vec3 uBaseColorFactor;
+uniform float uMetallicFactor;
+uniform float uRoughnessFactor;
+uniform vec3 uEmissiveFactor;
 #else
 uniform vec3 uColor;
 #endif
@@ -44,14 +64,70 @@ void main()
 {
     gPosition = vsOut.FragPos;
 #ifdef ENABLE_TEXCOORDS
-    gNormal = getNormalFromMap();
-    vec3 albedo = texture(uTexDiffuse, vsOut.TexCoords).rgb;
-    vec3 specular = texture(uTexSpecular, vsOut.TexCoords).rgb;
+    vec3 normal = normalize(vsOut.Normal);
+    if (uHasNormalMap)
+    {
+        normal = getNormalFromMap();
+    }
+
+    vec3 albedo = vec3(1.0);
+    vec3 specular = vec3(0.0);
+    float metallic = 0.0;
+    float roughness = 1.0;
+    float ao = 1.0;
+    vec3 emissive = vec3(0.0);
+
+    if (uUsePBR)
+    {
+        albedo = uBaseColorFactor;
+        if (uHasBaseColorMap)
+        {
+            albedo *= texture(uTexBaseColor, vsOut.TexCoords).rgb;
+        }
+
+        metallic = uMetallicFactor;
+        roughness = uRoughnessFactor;
+        if (uHasMetalnessMap)
+        {
+            vec3 mrSample = texture(uTexMetalness, vsOut.TexCoords).rgb;
+            metallic *= mrSample.b;
+            if (!uHasRoughnessMap)
+            {
+                roughness = uRoughnessFactor * mrSample.g;
+            }
+        }
+        if (uHasRoughnessMap)
+        {
+            roughness = uRoughnessFactor * texture(uTexRoughness, vsOut.TexCoords).r;
+        }
+
+        ao = uHasAoMap ? texture(uTexAmbientOcclusion, vsOut.TexCoords).r : 1.0;
+        emissive = uHasEmissiveMap ? texture(uTexEmissive, vsOut.TexCoords).rgb * uEmissiveFactor : vec3(0.0);
+
+        metallic = clamp(metallic, 0.0, 1.0);
+        roughness = clamp(roughness, 0.04, 1.0);
+    }
+    else
+    {
+        albedo = texture(uTexDiffuse, vsOut.TexCoords).rgb;
+        specular = texture(uTexSpecular, vsOut.TexCoords).rgb;
+    }
 #else
-    gNormal = normalize(vsOut.Normal);
+    vec3 normal = normalize(vsOut.Normal);
     vec3 albedo = uColor;
-    vec3 specular = uColor;
+    float metallic = 0.0;
+    float roughness = 1.0;
+    float ao = 1.0;
+    vec3 emissive = vec3(0.0);
 #endif
-    gAlbedo = vec4(albedo, 1.0);
-    gSpecular = specular;
+    gNormal = normal;
+#ifdef ENABLE_TEXCOORDS
+    // gAlbedo.a stores shading model (1 = PBR, 0 = Phong).
+    gAlbedo = vec4(albedo, (uUsePBR ? 1.0 : 0.0));
+    gMRA = uUsePBR ? vec3(metallic, roughness, ao) : specular;
+#else
+    gAlbedo = vec4(albedo, 0.0);
+    gMRA = vec3(metallic, roughness, ao);
+#endif
+    gEmissive = emissive;
 }
