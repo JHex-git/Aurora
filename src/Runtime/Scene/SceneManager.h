@@ -46,9 +46,9 @@ public:
     const std::vector<glm::vec3> GetBVHVertices() const;
 
     MeshID RegisterMesh(const std::shared_ptr<Mesh>& mesh);
-    void UnregisterMesh(MeshID id) { m_meshes.erase(id); }
+    void UnregisterMesh(MeshID id);
     const std::unordered_map<MeshID, std::weak_ptr<Mesh>>& GetMeshes() const { return m_meshes; }
-    std::vector<std::shared_ptr<Mesh>> GetMeshesInViewFrustum() const;
+    std::vector<std::shared_ptr<Mesh>> GetMeshesInViewFrustum();
 
     // This is used for scene irrelavant objects, such as gizmos.
     std::shared_ptr<SceneObject> GetDummySceneObject() const { return m_dummy_scene_object; }
@@ -56,13 +56,17 @@ public:
 private:
     SceneManager() { m_dummy_scene_object = std::make_shared<SceneObject>("Dummy Scene Object"); }
 
+    void RebuildBVH();
+
 private:
     std::shared_ptr<Scene> m_scene;
     std::unique_ptr<Octree> m_octree;
     std::unique_ptr<BoundingVolumeHierarchy> m_bvh;
+    bool m_bvh_dirty = true;
     std::unordered_map<MeshID, std::weak_ptr<Mesh>> m_meshes;
 
     // This is used for scene irrelavant objects, such as gizmos.
     std::shared_ptr<SceneObject> m_dummy_scene_object;
 };
 } // namespace Aurora
+

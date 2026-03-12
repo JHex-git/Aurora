@@ -56,6 +56,9 @@ BoundingVolumeHierarchy BoundingVolumeHierarchy::Build(const std::vector<std::sh
         else
             std::swap(meshes[i], meshes[j--]);
     }
+    // Avoid degenerate splits that cause empty children and infinite recursion.
+    if (i == 0 || i == static_cast<int>(meshes.size()))
+        i = static_cast<int>(meshes.size()) / 2;
     hierarchy.m_child1 = std::make_unique<BoundingVolumeHierarchy>(BuildChild(meshes, 0, i));
     hierarchy.m_child2 = std::make_unique<BoundingVolumeHierarchy>(BuildChild(meshes, i, meshes.size()));
     return hierarchy;
@@ -65,10 +68,13 @@ BoundingVolumeHierarchy BoundingVolumeHierarchy::BuildChild(std::vector<std::sha
 {
     BoundingVolumeHierarchy hierarchy;
     hierarchy.m_primitive_count = end - begin;
-    if (hierarchy.m_primitive_count == 1)
+    if (hierarchy.m_primitive_count <= 1)
     {
-        hierarchy.m_mesh = meshes[begin];
-        hierarchy.m_aabb = meshes[begin]->GetAABB();
+        if (hierarchy.m_primitive_count == 1)
+        {
+            hierarchy.m_mesh = meshes[begin];
+            hierarchy.m_aabb = meshes[begin]->GetAABB();
+        }
         return hierarchy;
     }
     for (int i = begin; i < end; i++)
@@ -97,6 +103,9 @@ BoundingVolumeHierarchy BoundingVolumeHierarchy::BuildChild(std::vector<std::sha
         else
             std::swap(meshes[i], meshes[j--]);
     }
+    // Avoid degenerate splits that cause empty children and infinite recursion.
+    if (i == begin || i == end)
+        i = begin + (hierarchy.m_primitive_count / 2);
     hierarchy.m_child1 = std::make_unique<BoundingVolumeHierarchy>(BuildChild(meshes, begin, i));
     hierarchy.m_child2 = std::make_unique<BoundingVolumeHierarchy>(BuildChild(meshes, i, end));
     return hierarchy;

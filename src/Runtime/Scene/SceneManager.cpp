@@ -21,6 +21,7 @@ void SceneManager::CleanUp()
     m_octree.reset();
     m_bvh.reset();
     m_meshes.clear();
+    m_bvh_dirty = true;
     m_dummy_scene_object.reset();
 }
 
@@ -54,6 +55,7 @@ void SceneManager::LoadScene(const std::string& scene_path)
 {
     TextureManager::GetInstance().Reset();
     m_meshes.clear();
+    m_bvh_dirty = true;
 
     spdlog::info("Scene {} loading...", scene_path);
     m_scene = std::make_shared<Scene>(scene_path);
@@ -66,6 +68,7 @@ void SceneManager::LoadScene(const std::string& scene_path)
     // m_octree = std::make_unique<Octree>(Octree::Build(m_scene->GetSceneObjects()));
     // spdlog::info("Spatial Octree built.");
     m_bvh = std::make_unique<BoundingVolumeHierarchy>(BoundingVolumeHierarchy::Build(m_scene->GetSceneObjects()));
+    m_bvh_dirty = false;
     spdlog::info("Bounding Volume Hierarchy built.");
 
     WindowSystem::GetInstance().UpdateTitleSurfix(" - " + scene_path);
@@ -120,11 +123,36 @@ MeshID SceneManager::RegisterMesh(const std::shared_ptr<Mesh>& mesh)
 {
     static MeshID id = 1;
     m_meshes.emplace(id, mesh);
+    m_bvh_dirty = true;
     return id++;
 }
 
-std::vector<std::shared_ptr<Mesh>> SceneManager::GetMeshesInViewFrustum() const
+void SceneManager::UnregisterMesh(MeshID id)
 {
+    m_meshes.erase(id);
+    m_bvh_dirty = true;
+}
+
+void SceneManager::RebuildBVH()
+{
+    if (!m_bvh_dirty)
+        return;
+
+    if (m_scene)
+    {
+        m_bvh = std::make_unique<BoundingVolumeHierarchy>(BoundingVolumeHierarchy::Build(m_scene->GetSceneObjects()));
+    }
+    else
+    {
+        m_bvh.reset();
+    }
+
+    m_bvh_dirty = false;
+}
+
+std::vector<std::shared_ptr<Mesh>> SceneManager::GetMeshesInViewFrustum()
+{
+    RebuildBVH();
     std::vector<std::shared_ptr<Mesh>> meshes;
     if (m_scene)
     {
@@ -159,6 +187,7 @@ std::vector<std::shared_ptr<Mesh>> SceneManager::GetMeshesInViewFrustum() const
 void SceneManager::CreateNewScene(const std::string& save_path)
 {
     TextureManager::GetInstance().Reset();
+    m_bvh_dirty = true;
 
     m_scene = std::make_shared<Scene>(save_path);
     m_scene->SetDirty();
