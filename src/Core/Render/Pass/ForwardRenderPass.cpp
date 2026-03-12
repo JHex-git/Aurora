@@ -196,7 +196,7 @@ void ForwardRenderPass::LazyUpdateLightData()
             if (!light) continue;
             if (light_ubo_data.num_lights >= LightUBOData::kMaxLights)
                 break;
-    
+
             // fill light data to light_ubo_data
             light_ubo_data.lights[light_ubo_data.num_lights].light_pos = light->GetPosition();
             light_ubo_data.lights[light_ubo_data.num_lights].light_color = light->GetColor();
@@ -228,15 +228,16 @@ void ForwardRenderPass::RenderPointLightShadow(ContextState& context_state) cons
             auto light_owner = light->GetOwner().lock();
     
             SCOPED_RENDER_EVENT(light_owner ? light_owner->GetName() : "light");
+            RenderState render_state;
+            render_state.depth_stencil_state.depth_test_enabled = true;
+            render_state.depth_stencil_state.depth_write_enabled = true;
+            context_state.ApplyRenderState(render_state);
             for (int face = 0; face < k_dirs.size(); ++face)
             {
                 m_shadow_cubemap_fbo->BindDepthCubemapArray(light_index, face);
                 glClear(GL_DEPTH_BUFFER_BIT);
             }
     
-            RenderState render_state;
-            render_state.depth_stencil_state.depth_test_enabled = true;
-            context_state.ApplyRenderState(render_state);
             const float near_plane = light->GetCullDistance().x;
             const float far_plane = light->GetCullDistance().y;
             const auto perspective = glm::perspective(glm::radians(90.f), 1.f, near_plane, far_plane);
