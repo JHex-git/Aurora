@@ -25,6 +25,15 @@ void MainCamera::Pan(bool is_right)
         m_camera->m_position -= m_camera->GetRight() * m_horizontal_speed;
 }
 
+void MainCamera::MoveVertical(bool is_up)
+{
+    const float delta = m_forward_speed;
+    if (is_up)
+        m_camera->m_position += m_world_up * delta;
+    else
+        m_camera->m_position -= m_world_up * delta;
+}
+
 void MainCamera::Tilt(float yoffset)
 {
     constexpr float sensitivity = 0.001f;
@@ -66,3 +75,5 @@ bool MainCamera::Intersect(const AxisAlignedBoundingBox& aabb) const
     return Aurora::Intersect(view_aaabb, ViewFrustum(*this));
 }
 } // namespace Aurora
+
+

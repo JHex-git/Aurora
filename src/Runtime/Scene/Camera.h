@@ -108,6 +108,7 @@ public:
 
     // 左右移动
     void Pan(bool is_right);
+    void MoveVertical(bool is_up);
 
     // 垂直移动
     void Tilt(float yoffset);
@@ -142,3 +143,4 @@ private:
     constexpr static float default_forward_speed = 0.05f;
 };
 } // namespace Aurora
+

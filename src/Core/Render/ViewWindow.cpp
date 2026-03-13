@@ -94,9 +94,22 @@ void ViewWindow::OnKeyCallback(int key, int scancode, int action, int mods)
     {
         MainCamera::GetInstance().Dolly(false);
     }
+    else if (key == GLFW_KEY_Q && action == GLFW_REPEAT)
+    {
+        if (WindowSystem::GetInstance().IsMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
+            MainCamera::GetInstance().MoveVertical(false);
+    }
+    else if (key == GLFW_KEY_E && action == GLFW_REPEAT)
+    {
+        if (WindowSystem::GetInstance().IsMouseButtonDown(GLFW_MOUSE_BUTTON_RIGHT))
+            MainCamera::GetInstance().MoveVertical(true);
+    }
     else if (key == GLFW_KEY_DELETE && action == GLFW_PRESS)
     {
         SceneManager::GetInstance().GetScene()->DeleteSelectedSceneObject();
     }
 }
 } // namespace Aurora
+
+
+
