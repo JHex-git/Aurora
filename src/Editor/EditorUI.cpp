@@ -490,6 +490,7 @@ void EditorUI::ShowMainPanel()
         if (ImGui::BeginMenu("Debug"))
         {
             ImGui::MenuItem("Show Spatial Hierarchy", nullptr, &GlobalContext::GetInstance().draw_spatial_hierarchy);
+            ImGui::MenuItem("Show Directional Cascades", nullptr, &GlobalContext::GetInstance().draw_directional_cascades);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();

@@ -16,6 +16,7 @@
 #include "Runtime/Scene/LightManager.h"
 #include "Runtime/Scene/TextureManager.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "Runtime/GlobalContext.h"
 #include "glWrapper/Utils.h"
 #include "glWrapper/UniformBuffer.h"
 
@@ -573,6 +574,7 @@ void DeferredRenderPass::RenderLightingPass(ContextState& context_state, std::sh
 
     m_lighting_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
     m_lighting_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
+    m_lighting_shader_program->SetUniform("uDebugShowCascades", GlobalContext::GetInstance().draw_directional_cascades);
     m_lighting_shader_program->SetUniform("uDirectionalShadowPcfSamples", settings.GetDirectionalShadowPcfSamples());
     m_lighting_shader_program->SetUniform("uPointShadowPcfSamples", settings.GetPointShadowPcfSamples());
 

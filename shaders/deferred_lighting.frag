@@ -45,6 +45,7 @@ uniform bool uEnableDirectionalLightShadow;
 uniform sampler2DArray uDirectionalLightTexShadowMap;
 uniform int uDirectionalShadowPcfSamples;
 uniform int uPointShadowPcfSamples;
+uniform bool uDebugShowCascades;
 
 #define POINT_LIGHT_SELF_SHADOW_BIAS 1e-4
 #define DIRECTIONAL_LIGHT_SELF_SHADOW_BIAS 5e-4
@@ -110,6 +111,17 @@ int selectDirectionalCascade(float viewDepth)
         }
     }
     return cascade_index;
+}
+
+vec3 getCascadeDebugColor(int cascade_index)
+{
+    const vec3 colors[4] = vec3[](
+        vec3(0.92, 0.16, 0.16),
+        vec3(0.16, 0.78, 0.28),
+        vec3(0.22, 0.49, 0.86),
+        vec3(0.95, 0.78, 0.16)
+    );
+    return colors[clamp(cascade_index, 0, 3)];
 }
 
 float getDirectionalLightVisibility(vec3 lightDir, vec3 normal, vec3 frag_pos)
@@ -308,6 +320,13 @@ void main()
 
     normal = normalize(normal);
     vec3 viewDir = normalize(uViewPos - frag_pos);
+    if (uDebugShowCascades && uEnableDirectionalLightShadow)
+    {
+        float viewDepth = -(uView * vec4(frag_pos, 1.0)).z;
+        int cascade_index = selectDirectionalCascade(viewDepth);
+        color = vec4(getCascadeDebugColor(cascade_index), 1.0);
+        return;
+    }
     // gAlbedo.a encodes shading model: 0 = Phong, 1 = PBR.
     if (albedoPacked.a < 0.5)
     {

@@ -16,6 +16,7 @@
 #include "Runtime/Scene/Camera.h"
 #include "Runtime/Scene/LightManager.h"
 #include "Runtime/Scene/TextureManager.h"
+#include "Runtime/GlobalContext.h"
 #include "glWrapper/Utils.h"
 #include "glWrapper/UniformBuffer.h"
 #include "Runtime/Scene/SceneManager.h"
@@ -400,6 +401,7 @@ void ForwardRenderPass::RenderForwardShading(ContextState& context_state, std::s
         mesh_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
         mesh_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
         mesh_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
+        mesh_shader_program->SetUniform("uDebugShowCascades", GlobalContext::GetInstance().draw_directional_cascades);
         if (directional_light && m_directional_cascades_valid)
         {
             const int cascade_count = settings.GetDirectionalCascadeCount();
