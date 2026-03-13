@@ -1,4 +1,6 @@
 // std include
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 // thirdparty include
 #include "thirdparty/assimp/include/assimp/Importer.hpp"
@@ -19,6 +21,31 @@
 
 namespace Aurora
 {
+namespace
+{
+    TextureBuilder::WrapType ConvertMapMode(aiTextureMapMode mode)
+    {
+        switch (mode)
+        {
+        case aiTextureMapMode_Wrap:
+            return TextureBuilder::WrapType::Repeat;
+        case aiTextureMapMode_Clamp:
+            return TextureBuilder::WrapType::ClampToEdge;
+        case aiTextureMapMode_Mirror:
+            return TextureBuilder::WrapType::MirroredRepeat;
+        case aiTextureMapMode_Decal:
+            return TextureBuilder::WrapType::ClampToBorder;
+        default:
+            return TextureBuilder::WrapType::Repeat;
+        }
+    }
+
+    std::string BuildTextureCacheKey(const std::string& path, TextureBuilder::WrapType wrap_s, TextureBuilder::WrapType wrap_t)
+    {
+        return path + "|S=" + std::to_string(static_cast<int>(wrap_s)) + "|T=" + std::to_string(static_cast<int>(wrap_t));
+    }
+} // namespace
+
 REFLECTABLE_IMPL(Mesh, m_path, std::string)
 
 Mesh::~Mesh()
@@ -45,7 +72,16 @@ void Mesh::Update()
 bool Mesh::Load(const std::string& file_path)
 {
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(FileSystem::GetFullPath(file_path), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenBoundingBoxes);
+    std::filesystem::path path(file_path);
+    auto ext = path.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    unsigned int process_flags = aiProcess_Triangulate | aiProcess_GenBoundingBoxes;
+    if (ext != ".gltf" && ext != ".glb")
+    {
+        process_flags |= aiProcess_FlipUVs;
+    }
+    const aiScene* scene = importer.ReadFile(FileSystem::GetFullPath(file_path), process_flags);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
         spdlog::error("Failed to load mesh: {}", importer.GetErrorString());
@@ -144,6 +180,9 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         auto base_path_str = base_path.remove_filename().string();
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
         material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+        // base color maps (PBR)
+        std::vector<TextureID> baseColorMaps = LoadMaterialTextures(material, aiTextureType_BASE_COLOR, base_path_str);
+        textures.insert(textures.end(), baseColorMaps.begin(), baseColorMaps.end());
         // diffuse maps
         std::vector<TextureID> albedoMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE, base_path_str);
         textures.insert(textures.end(), albedoMaps.begin(), albedoMaps.end());
@@ -162,9 +201,9 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         // metallic maps
         std::vector<TextureID> metallicMaps = LoadMaterialTextures(material, aiTextureType_METALNESS, base_path_str);
         textures.insert(textures.end(), metallicMaps.begin(), metallicMaps.end());
-        // // roughness maps
-        // std::vector<TextureID> roughnessMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, base_path_str);
-        // textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
+        // roughness maps
+        std::vector<TextureID> roughnessMaps = LoadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, base_path_str);
+        textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
         // emissive maps
         std::vector<TextureID> emissiveMaps = LoadMaterialTextures(material, aiTextureType_EMISSIVE, base_path_str);
         textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
@@ -174,6 +213,11 @@ SubMesh Mesh::ProcessMesh(aiMesh* mesh, const aiScene* scene, const glm::mat4& t
         // ao maps
         std::vector<TextureID> aoMaps = LoadMaterialTextures(material, aiTextureType_AMBIENT_OCCLUSION, base_path_str);
         textures.insert(textures.end(), aoMaps.begin(), aoMaps.end());
+
+        if (!baseColorMaps.empty() || !metallicMaps.empty() || !roughnessMaps.empty())
+        {
+            m_has_pbr_textures = true;
+        }
     }
 
     if (!textures.empty()) m_has_textures = true;
@@ -186,10 +230,14 @@ std::vector<TextureID> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextur
     for(unsigned int i = 0; i < material->GetTextureCount(type); i++)
     {
         aiString path;
-        material->GetTexture(type, i, &path);
+        aiTextureMapMode map_mode[3] = { aiTextureMapMode_Wrap, aiTextureMapMode_Wrap, aiTextureMapMode_Wrap };
+        material->GetTexture(type, i, &path, nullptr, nullptr, nullptr, nullptr, map_mode);
         auto type_str = ConvertaiTextureTypeToString(type);
         auto full_path = base_path + path.C_Str();
-        if (auto it = m_texturePath_to_id.find(full_path); it != m_texturePath_to_id.end())
+        const auto wrap_s = ConvertMapMode(map_mode[0]);
+        const auto wrap_t = ConvertMapMode(map_mode[1]);
+        auto cache_key = BuildTextureCacheKey(full_path, wrap_s, wrap_t);
+        if (auto it = m_texturePath_to_id.find(cache_key); it != m_texturePath_to_id.end())
         {
             texture_ids.push_back(it->second);
             continue;
@@ -200,13 +248,13 @@ std::vector<TextureID> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextur
                         type == aiTextureType_BASE_COLOR ||
                         type == aiTextureType_EMISSION_COLOR;
         TextureBuilder builder;
-        builder.WithWrapS(TextureBuilder::WrapType::ClampToEdge)
-               .WithWrapT(TextureBuilder::WrapType::ClampToEdge);
+        builder.WithWrapS(wrap_s)
+               .WithWrapT(wrap_t);
         if (use_srgb)
             builder.WithSRGB(true);
         if (auto texture = builder.MakeTexture2D(full_path))
         {
-            m_texturePath_to_id.insert({full_path, texture->GetID()});
+            m_texturePath_to_id.insert({cache_key, texture->GetID()});
             texture_ids.push_back(texture->GetID());
             TextureManager::GetInstance().m_surface_textures.insert({texture->GetID(), SurfaceTexture(std::move(*texture), std::move(type_str))});
         }

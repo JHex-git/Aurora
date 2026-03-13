@@ -38,6 +38,7 @@ public:
     void Update() override;
 
     const bool HasTextures() const { return m_has_textures; }
+    const bool HasPBRTextures() const { return m_has_pbr_textures; }
     const AxisAlignedBoundingBox GetAABB() const;
 
     static constexpr MeshID INVALID_MESH_ID = 0;
@@ -54,6 +55,7 @@ private:
     MeshID m_id = INVALID_MESH_ID;
 
     bool m_has_textures = false;
+    bool m_has_pbr_textures = false;
     AxisAlignedBoundingBox m_local_aabb;
 
     REFLECTABLE_DECLARE(Mesh, m_path)
