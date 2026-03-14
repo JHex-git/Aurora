@@ -577,7 +577,23 @@ void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> di
         }
         center /= 8.0f;
 
-        const glm::mat4 light_view = glm::lookAt(center - light_dir, center, up_dir);
+        float radius = 0.0f;
+        for (const auto& corner : corners)
+        {
+            radius = std::max(radius, glm::length(glm::vec3(corner) - center));
+        }
+
+        // Build a rotation-only light view to snap the cascade center in light space.
+        const glm::mat4 light_view_rot = glm::lookAt(glm::vec3(0.0f), light_dir, up_dir);
+        const int shadow_map_size = std::max(settings.GetDirectionalShadowMapSize(), 1);
+        float ortho_extent = radius + padding_xy;
+        float texel_size = (2.0f * ortho_extent) / static_cast<float>(shadow_map_size);
+        glm::vec4 center_ls = light_view_rot * glm::vec4(center, 1.0f);
+        center_ls.x = std::round(center_ls.x / texel_size) * texel_size;
+        center_ls.y = std::round(center_ls.y / texel_size) * texel_size;
+        const glm::vec3 snapped_center = glm::vec3(glm::inverse(light_view_rot) * center_ls);
+
+        const glm::mat4 light_view = glm::lookAt(snapped_center - light_dir, snapped_center, up_dir);
 
         float min_x = std::numeric_limits<float>::max();
         float max_x = std::numeric_limits<float>::lowest();
@@ -597,11 +613,11 @@ void ForwardRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> di
             max_z = std::max(max_z, corner_ls.z);
         }
 
-        // XY padding prevents edge casters from popping; Z padding stabilizes depth range.
-        min_x -= padding_xy;
-        max_x += padding_xy;
-        min_y -= padding_xy;
-        max_y += padding_xy;
+        // Fix XY extent to a stable size; pad Z to stabilize depth range.
+        min_x = -ortho_extent;
+        max_x = ortho_extent;
+        min_y = -ortho_extent;
+        max_y = ortho_extent;
         min_z -= padding_z;
         max_z += padding_z;
 

@@ -700,6 +700,24 @@ void DeferredRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> d
         min_z -= padding_z;
         max_z += padding_z;
 
+        // Snap the light-space XY center to texel size to stabilize shadows while the camera moves.
+        const float range_x = max_x - min_x;
+        const float range_y = max_y - min_y;
+        const int shadow_map_size = std::max(settings.GetDirectionalShadowMapSize(), 1);
+        if (range_x > 0.0f && range_y > 0.0f)
+        {
+            const float texel_x = range_x / static_cast<float>(shadow_map_size);
+            const float texel_y = range_y / static_cast<float>(shadow_map_size);
+            float center_x = (min_x + max_x) * 0.5f;
+            float center_y = (min_y + max_y) * 0.5f;
+            center_x = std::round(center_x / texel_x) * texel_x;
+            center_y = std::round(center_y / texel_y) * texel_y;
+            min_x = center_x - range_x * 0.5f;
+            max_x = center_x + range_x * 0.5f;
+            min_y = center_y - range_y * 0.5f;
+            max_y = center_y + range_y * 0.5f;
+        }
+
         const glm::mat4 light_proj = glm::ortho(min_x, max_x, min_y, max_y, min_z, max_z);
         const AxisAlignedBoundingBox light_aabb(glm::vec3(min_x, min_y, min_z), glm::vec3(max_x, max_y, max_z));
         const glm::mat4 inv_light_view = glm::inverse(light_view);
