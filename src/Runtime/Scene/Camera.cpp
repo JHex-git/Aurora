@@ -12,22 +12,22 @@ namespace Aurora
 void MainCamera::Dolly(bool is_forward)
 {
     if (is_forward)
-        m_camera->m_position += m_camera->GetDirection() * m_forward_speed;
+        m_camera->m_position += m_camera->GetDirection() * m_speed;
     else
-        m_camera->m_position -= m_camera->GetDirection() * m_forward_speed;
+        m_camera->m_position -= m_camera->GetDirection() * m_speed;
 }
 
 void MainCamera::Pan(bool is_right)
 {
     if (is_right)
-        m_camera->m_position += m_camera->GetRight() * m_horizontal_speed;
+        m_camera->m_position += m_camera->GetRight() * m_speed;
     else
-        m_camera->m_position -= m_camera->GetRight() * m_horizontal_speed;
+        m_camera->m_position -= m_camera->GetRight() * m_speed;
 }
 
 void MainCamera::MoveVertical(bool is_up)
 {
-    const float delta = m_forward_speed;
+    const float delta = m_speed;
     if (is_up)
         m_camera->m_position += m_world_up * delta;
     else
@@ -57,11 +57,11 @@ void MainCamera::Rotate(float xoffset, float yoffset)
     m_camera->SetDirection(direction, m_world_up);
 }
 
-void MainCamera::AdjustForwardSpeed(float yoffset) 
+void MainCamera::AdjustSpeed(float yoffset) 
 {
     constexpr float sensitivity = 0.01f;
-    float speed = m_forward_speed + yoffset * sensitivity;
-    if (speed >= min_forward_speed && speed <= max_forward_speed) m_forward_speed = speed;
+    float speed = m_speed + yoffset * sensitivity;
+    if (speed >= min_speed && speed <= max_speed) m_speed = speed;
 }
 
 MainCamera::operator ViewFrustum() const

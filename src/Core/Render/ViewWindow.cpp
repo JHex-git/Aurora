@@ -72,7 +72,7 @@ void ViewWindow::OnMouseButtonCallback(int button, int action, int mods)
 void ViewWindow::OnScrollCallback(double xoffset, double yoffset)
 {
     if (WindowSystem::GetInstance().IsCursorCaptured())
-        MainCamera::GetInstance().AdjustForwardSpeed(yoffset);
+        MainCamera::GetInstance().AdjustSpeed(yoffset);
 }
 
 void ViewWindow::OnKeyCallback(int key, int scancode, int action, int mods)

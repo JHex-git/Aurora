@@ -101,7 +101,7 @@ public:
     inline glm::vec3 GetPosition() const { return m_camera->m_position; }
     inline float GetNearPlane() const { return m_camera->GetNearPlane(); }
     inline float GetFarPlane() const { return m_camera->GetFarPlane(); }
-    float GetForwardSpeed() const { return m_forward_speed; }
+    float GetSpeed() const { return m_speed; }
 
     // 前后移动
     void Dolly(bool is_forward);
@@ -115,7 +115,7 @@ public:
 
     void Rotate(float xoffset, float yoffset);
 
-    void AdjustForwardSpeed(float yoffset);
+    void AdjustSpeed(float yoffset);
 
     bool Intersect(const AxisAlignedBoundingBox& aabb) const;
     bool Intersect(AxisAlignedBoundingBox&& aabb) const;
@@ -132,15 +132,14 @@ private:
     }
 
     std::unique_ptr<PerspectiveCamera> m_camera;
-    float m_forward_speed = default_forward_speed;
-    float m_horizontal_speed = 0.01f;
+    float m_speed = default_speed;
     float m_yaw = 0.f;
     float m_pitch = 0.f;
     glm::vec3 m_world_up = glm::vec3(0.f, 1.f, 0.f);
 
-    constexpr static float min_forward_speed = 0.01f;
-    constexpr static float max_forward_speed = 5.f;
-    constexpr static float default_forward_speed = 0.05f;
+    constexpr static float min_speed = 0.01f;
+    constexpr static float max_speed = 5.f;
+    constexpr static float default_speed = 0.05f;
 };
 } // namespace Aurora
 

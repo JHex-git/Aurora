@@ -48,7 +48,7 @@ bool WindowSystem::Init(unsigned int width, unsigned int height, std::string tit
 
     glfwSetScrollCallback(m_window, [](GLFWwindow* window, double xoffset, double yoffset)
     {
-        MainCamera::GetInstance().AdjustForwardSpeed(yoffset);
+        MainCamera::GetInstance().AdjustSpeed(yoffset);
     });
 
     glfwSetCursorPosCallback(m_window, GLFWCursorPosCallback);
