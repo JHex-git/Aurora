@@ -13,10 +13,16 @@
 #define SELF_SHADOW_FACTOR 0.1
 #endif
 
+#ifndef DIRECTIONAL_CASCADE_BLEND_FRACTION
+#define DIRECTIONAL_CASCADE_BLEND_FRACTION 0.1
+#endif
+
 const int kPointShadowSampleMax = 9;
 const int kDirectionalShadowSampleMax = 9;
+const float kDirectionalCascadeBlendFraction = DIRECTIONAL_CASCADE_BLEND_FRACTION;
 
 #include "utils.glsl"
+
 float getPointLightVisibility(float lightDistance, vec3 lightDir, vec3 normal, int light_index, float zNear, float zFar)
 {
     float nDotL = dot(normal, lightDir);
@@ -69,6 +75,20 @@ int selectDirectionalCascade(float viewDepth)
     return cascade_index;
 }
 
+float getCascadeNear(int cascade_index)
+{
+    if (cascade_index <= 0)
+    {
+        return 0.0;
+    }
+    return uDirectionalLightCascadeSplits[cascade_index - 1];
+}
+
+float getCascadeRange(int cascade_index)
+{
+    return max(uDirectionalLightCascadeSplits[cascade_index] - getCascadeNear(cascade_index), 1e-3);
+}
+
 vec3 getCascadeDebugColor(int cascade_index)
 {
     const vec3 colors[4] = vec3[](
@@ -80,15 +100,8 @@ vec3 getCascadeDebugColor(int cascade_index)
     return colors[clamp(cascade_index, 0, 3)];
 }
 
-float getDirectionalLightVisibility(vec3 lightDir, vec3 normal, vec3 frag_pos)
+float getDirectionalShadowVisibilityForCascade(int cascade_index, vec3 frag_pos, vec3 lightDir, vec3 normal)
 {
-    float nDotL = dot(normal, lightDir);
-    if (nDotL <= 0.0) return 0.0;
-
-    float viewDepth = -(uView * vec4(frag_pos, 1.0)).z;
-    if (viewDepth <= 0.0) return 1.0;
-    int cascade_index = selectDirectionalCascade(viewDepth);
-
     vec4 coords = uDirectionalLightOrthoVP[cascade_index] * vec4(frag_pos, 1);
     coords /= coords.w;
 
@@ -97,6 +110,7 @@ float getDirectionalLightVisibility(vec3 lightDir, vec3 normal, vec3 frag_pos)
 
     vec2 ortho_coords = (coords.xy + 1) / 2;
     float lightDistance = (coords.z + 1) / 2 * uDirectionalLightNearFarNorm[cascade_index];
+    float nDotL = dot(normal, lightDir);
     float bias = clamp(SELF_SHADOW_FACTOR * (1.0 - nDotL), DIRECTIONAL_LIGHT_SELF_SHADOW_BIAS, SELF_SHADOW_FACTOR);
     vec2 texelSize = 1.0 / vec2(textureSize(uDirectionalLightTexShadowMap, 0).xy);
 
@@ -119,6 +133,31 @@ float getDirectionalLightVisibility(vec3 lightDir, vec3 normal, vec3 frag_pos)
         }
     }
     return visibility / float(kernel * kernel);
+}
+
+float getDirectionalLightVisibility(vec3 lightDir, vec3 normal, vec3 frag_pos)
+{
+    float nDotL = dot(normal, lightDir);
+    if (nDotL <= 0.0) return 0.0;
+
+    float viewDepth = -(uView * vec4(frag_pos, 1.0)).z;
+    if (viewDepth <= 0.0) return 1.0;
+
+    int cascade_index = selectDirectionalCascade(viewDepth);
+    float visibility = getDirectionalShadowVisibilityForCascade(cascade_index, frag_pos, lightDir, normal);
+
+    if (cascade_index < uDirectionalCascadeCount - 1)
+    {
+        float split = uDirectionalLightCascadeSplits[cascade_index];
+        float blend_width = getCascadeRange(cascade_index) * kDirectionalCascadeBlendFraction;
+        if (blend_width > 0.0 && viewDepth > split - blend_width)
+        {
+            float blend = clamp((viewDepth - (split - blend_width)) / blend_width, 0.0, 1.0);
+            float next_visibility = getDirectionalShadowVisibilityForCascade(cascade_index + 1, frag_pos, lightDir, normal);
+            visibility = mix(visibility, next_visibility, blend);
+        }
+    }
+    return visibility;
 }
 
 #endif

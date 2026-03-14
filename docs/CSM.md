@@ -5,7 +5,7 @@ This document gives a method overview of the CSM pipeline in Aurora, focusing on
 **Cascade Split Strategy**
 - The camera frustum is divided into multiple depth ranges (cascades) between the camera near and far planes.
 - Split positions are computed by blending linear and logarithmic distributions, concentrating more resolution closer to the camera while still covering distant geometry.
-- Aurora uses $\lambda = 0.95$ for the split blend.
+- $\lambda$ is configurable via `RenderSettings` (default $\lambda = 0.95$).
 
 Split distances (for cascade index $i = 1..N$):
 $$
@@ -77,6 +77,7 @@ $$
 - The fragment's view-space depth is computed in the forward shader.
 - The cascade whose split depth range contains the fragment depth is selected.
 - The corresponding shadow map layer is sampled for the visibility test.
+- Shared cascade selection and shadow sampling logic lives in `shaders/include/shadow_common.glsl` and is included by both forward and deferred shaders via `#include`.
 
 Cascade selection by view-space depth:
 $$
@@ -85,3 +86,24 @@ z_{view} &= - (V \cdot \text{vec4}(P_{world}, 1)).z \\
 \text{select smallest } i \text{ such that } z_{view} &\le d_i
 \end{aligned}
 $$
+
+**Cascade Blending (Seam Reduction)**
+- To reduce visible discontinuities at cascade boundaries, the shading pass blends shadow visibility across a small range near each split.
+- For cascade $i$, blend width is a fraction of the cascade depth range:
+$$
+\begin{aligned}
+ w_i &= (d_i - d_{i-1}) \cdot \beta
+\end{aligned}
+$$
+where $\beta$ is `DIRECTIONAL_CASCADE_BLEND_FRACTION` (default 0.1). No blending is performed on the last cascade.
+
+- If the fragment depth is within the blend zone:
+$$
+\begin{aligned}
+ t &= \mathrm{clamp}\left(\frac{z_{view} - (d_i - w_i)}{w_i}, 0, 1\right) \\
+ v &= (1 - t) \, v_i + t \, v_{i+1}
+\end{aligned}
+$$
+where $v_i$ and $v_{i+1}$ are the shadow visibilities sampled from cascades $i$ and $i+1$.
+
+
