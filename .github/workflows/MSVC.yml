@@ -1,4 +1,4 @@
-name: MSVC CI
+﻿name: MSVC CI
 
 on:
   push:
@@ -15,6 +15,21 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'true'
+
+    - name: Install Vulkan SDK
+      run: choco install vulkan-sdk --no-progress -y
+
+    - name: Setup Vulkan SDK env
+      shell: pwsh
+      run: |
+        $sdkRoot = "C:\\VulkanSDK"
+        if (-not (Test-Path $sdkRoot)) {
+          throw "Vulkan SDK not found at $sdkRoot"
+        }
+        $version = (Get-ChildItem $sdkRoot | Where-Object { $_.PSIsContainer } | Sort-Object Name -Descending | Select-Object -First 1).Name
+        $sdkPath = Join-Path $sdkRoot $version
+        "VULKAN_SDK=$sdkPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        "VK_SDK_PATH=$sdkPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Build-MSVC
       run: ./MSVC_build.bat
