@@ -1,5 +1,6 @@
 #pragma once
 // std include
+#include <limits>
 #include <vector>
 // thirdparty include
 #include "thirdparty/opengl/glm/glm/glm.hpp"
@@ -114,6 +115,8 @@ const AxisAlignedBoundingBox operator*(T&& transform, AxisAlignedBoundingBox&& a
     vertices[6] = std::forward<T>(transform) * glm::vec4{aabb.m_min, 1};
     vertices[7] = std::forward<T>(transform) * glm::vec4{aabb.m_max, 1};
 
+    aabb.m_min = glm::vec3(std::numeric_limits<float>::max());
+    aabb.m_max = glm::vec3(std::numeric_limits<float>::lowest());
     for (auto& vertex : vertices)
     {
         aabb.m_min = glm::min(aabb.m_min, vertex);
@@ -121,7 +124,7 @@ const AxisAlignedBoundingBox operator*(T&& transform, AxisAlignedBoundingBox&& a
     }
     aabb.m_center = (aabb.m_min + aabb.m_max) * 0.5f;
 
-    return std::move(aabb);
+    return aabb;
 }
 
 template<typename T> requires std::is_same_v<glm::mat4, std::decay_t<T>>
@@ -137,6 +140,8 @@ const AxisAlignedBoundingBox operator*(AxisAlignedBoundingBox&& aabb, T&& transf
     vertices[6] = glm::vec4{aabb.m_min, 1} * std::forward<T>(transform);
     vertices[7] = glm::vec4{aabb.m_max, 1} * std::forward<T>(transform);
 
+    aabb.m_min = glm::vec3(std::numeric_limits<float>::max());
+    aabb.m_max = glm::vec3(std::numeric_limits<float>::lowest());
     for (auto& vertex : vertices)
     {
         aabb.m_min = glm::min(aabb.m_min, vertex);
@@ -144,6 +149,6 @@ const AxisAlignedBoundingBox operator*(AxisAlignedBoundingBox&& aabb, T&& transf
     }
     aabb.m_center = (aabb.m_min + aabb.m_max) * 0.5f;
 
-    return std::move(aabb);
+    return aabb;
 }
 } // namespace Aurora
