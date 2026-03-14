@@ -67,10 +67,14 @@ bool VisualizePass::Init(const std::array<int, 2>& viewport_size)
 void VisualizePass::Render(ContextState& context_state)
 {
     m_fbo->Bind();
+    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
     
     if (GlobalContext::GetInstance().draw_spatial_hierarchy)
     {
         SCOPED_RENDER_EVENT("Spatial Hierarchy Visualization");
+        RenderState render_state;
+        context_state.ApplyRenderState(render_state);
+
         // How to transfer data from cpu to gpu efficiently?
         // const auto vertices = SceneManager::GetInstance().GetOctreeVertices();
         const auto vertices = SceneManager::GetInstance().GetBVHVertices();
@@ -85,3 +89,4 @@ void VisualizePass::Render(ContextState& context_state)
     }
 }
 } // namespace Aurora
+
