@@ -1,4 +1,4 @@
-﻿name: MSVC CI
+name: MSVC CI
 
 on:
   push:
@@ -16,20 +16,13 @@ jobs:
       with:
         submodules: 'true'
 
-    - name: Install Vulkan SDK
-      run: choco install vulkan-sdk --no-progress -y
-
-    - name: Setup Vulkan SDK env
+    - name: Install shaderc via vcpkg
       shell: pwsh
       run: |
-        $sdkRoot = "C:\\VulkanSDK"
-        if (-not (Test-Path $sdkRoot)) {
-          throw "Vulkan SDK not found at $sdkRoot"
-        }
-        $version = (Get-ChildItem $sdkRoot | Where-Object { $_.PSIsContainer } | Sort-Object Name -Descending | Select-Object -First 1).Name
-        $sdkPath = Join-Path $sdkRoot $version
-        "VULKAN_SDK=$sdkPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        "VK_SDK_PATH=$sdkPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        git clone https://github.com/microsoft/vcpkg "$env:GITHUB_WORKSPACE/vcpkg"
+        & "$env:GITHUB_WORKSPACE/vcpkg/bootstrap-vcpkg.bat"
+        & "$env:GITHUB_WORKSPACE/vcpkg/vcpkg" install shaderc --triplet x64-windows
+        "CMAKE_PREFIX_PATH=$env:GITHUB_WORKSPACE\vcpkg\installed\x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Build-MSVC
       run: ./MSVC_build.bat
