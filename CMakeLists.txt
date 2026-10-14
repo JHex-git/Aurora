@@ -4,10 +4,16 @@ project(Aurora)
 option(SRC_DEBUG_MODE "Set src code to debug mode if ON" ON)
 option(ENABLE_VCPKG OFF "Turn off vcpkg to ensure the compatibility of the third party libraries"
 )
+set(_shaderc_hint_paths "")
+if (DEFINED ENV{VULKAN_SDK})
+    list(APPEND _shaderc_hint_paths "$ENV{VULKAN_SDK}")
+endif()
+if (CMAKE_PREFIX_PATH)
+    list(APPEND _shaderc_hint_paths ${CMAKE_PREFIX_PATH})
+endif()
 find_package(shaderc CONFIG QUIET)
 if (NOT shaderc_FOUND)
     # Fallback: locate Shaderc from Vulkan SDK without a CMake config package.
-    set(_shaderc_hint_paths "")
     if (DEFINED ENV{VULKAN_SDK})
         list(APPEND _shaderc_hint_paths "$ENV{VULKAN_SDK}")
     endif()
@@ -48,6 +54,29 @@ if (NOT shaderc_FOUND)
         message(FATAL_ERROR "shaderc not found. Set shaderc_DIR or install Vulkan SDK Shaderc component. Tried VULKAN_SDK='$ENV{VULKAN_SDK}'.")
     endif()
 endif()
+
+# If shaderc is found but no combined target is provided, try to locate it in prefix paths.
+if (shaderc_FOUND AND NOT TARGET shaderc::shaderc_combined)
+    find_library(SHADERC_COMBINED_LIB
+        NAMES shaderc_combined
+        HINTS ${_shaderc_hint_paths}
+        PATH_SUFFIXES Lib lib
+    )
+    if (SHADERC_COMBINED_LIB)
+        if (TARGET shaderc::shaderc)
+            get_target_property(_shaderc_inc_dirs shaderc::shaderc INTERFACE_INCLUDE_DIRECTORIES)
+        endif()
+        add_library(shaderc::shaderc_combined UNKNOWN IMPORTED)
+        set_target_properties(shaderc::shaderc_combined PROPERTIES
+            IMPORTED_LOCATION "${SHADERC_COMBINED_LIB}"
+            INTERFACE_INCLUDE_DIRECTORIES "${_shaderc_inc_dirs}"
+        )
+        if (NOT TARGET shaderc_combined)
+            add_library(shaderc_combined ALIAS shaderc::shaderc_combined)
+        endif()
+    endif()
+endif()
+
 if (SRC_DEBUG_MODE)
     set(CMAKE_BUILD_TYPE DEBUG)
 endif()
