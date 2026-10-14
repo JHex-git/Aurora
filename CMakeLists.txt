@@ -11,13 +11,21 @@ endif()
 if (CMAKE_PREFIX_PATH)
     list(APPEND _shaderc_hint_paths ${CMAKE_PREFIX_PATH})
 endif()
-find_package(shaderc CONFIG QUIET)
-if (NOT shaderc_FOUND)
-    # Fallback: locate Shaderc from Vulkan SDK without a CMake config package.
-    if (DEFINED ENV{VULKAN_SDK})
-        list(APPEND _shaderc_hint_paths "$ENV{VULKAN_SDK}")
-    endif()
 
+# vcpkg installs shaderc under the package name "unofficial-shaderc" and exports
+# unofficial::shaderc::shaderc. Unlike a bare shaderc.lib, that target carries the
+# static glslang/SPIRV-Tools dependencies, so prefer it whenever it is available.
+find_package(unofficial-shaderc CONFIG QUIET)
+if (TARGET unofficial::shaderc::shaderc AND NOT TARGET shaderc::shaderc)
+    add_library(shaderc::shaderc INTERFACE IMPORTED)
+    set_target_properties(shaderc::shaderc PROPERTIES
+        INTERFACE_LINK_LIBRARIES unofficial::shaderc::shaderc
+    )
+endif()
+
+find_package(shaderc CONFIG QUIET)
+if (NOT shaderc_FOUND AND NOT TARGET shaderc::shaderc)
+    # Fallback: locate Shaderc from Vulkan SDK without a CMake config package.
     find_path(SHADERC_INCLUDE_DIR
         NAMES shaderc/shaderc.hpp
         HINTS ${_shaderc_hint_paths}
@@ -43,6 +51,38 @@ if (NOT shaderc_FOUND)
             INTERFACE_INCLUDE_DIRECTORIES "${SHADERC_INCLUDE_DIR}"
         )
 
+        # A plain shaderc.lib only contains libshaderc. When it is neither the
+        # combined nor the shared build, the linker also needs libshaderc_util plus
+        # the glslang and SPIRV-Tools static libraries sitting next to it. Without
+        # them MSVC fails with LNK2019 (e.g. GlslangInitializer) in
+        # shaderc_compiler_initialize.
+        if (NOT SHADERC_LIB MATCHES "shaderc_combined" AND NOT SHADERC_LIB MATCHES "shaderc_shared")
+            get_filename_component(_shaderc_lib_dir "${SHADERC_LIB}" DIRECTORY)
+            set(_shaderc_dep_libs "")
+            foreach(_shaderc_dep IN ITEMS
+                    shaderc_util
+                    glslang glslang-default-resource-limits
+                    SPIRV MachineIndependent GenericCodeGen OGLCompiler OSDependent
+                    HLSL SPVRemapper
+                    SPIRV-Tools-opt SPIRV-Tools SPIRV-Tools-link)
+                unset(_shaderc_dep_path CACHE)
+                find_library(_shaderc_dep_path
+                    NAMES ${_shaderc_dep}
+                    HINTS "${_shaderc_lib_dir}"
+                    NO_DEFAULT_PATH
+                )
+                if (_shaderc_dep_path)
+                    list(APPEND _shaderc_dep_libs "${_shaderc_dep_path}")
+                endif()
+            endforeach()
+            unset(_shaderc_dep_path CACHE)
+            if (_shaderc_dep_libs)
+                set_property(TARGET ${_shaderc_target} APPEND PROPERTY
+                    INTERFACE_LINK_LIBRARIES "${_shaderc_dep_libs}"
+                )
+            endif()
+        endif()
+
         # Provide non-namespaced aliases for older usage patterns.
         if (_shaderc_target STREQUAL "shaderc::shaderc_combined" AND NOT TARGET shaderc_combined)
             add_library(shaderc_combined ALIAS shaderc::shaderc_combined)
@@ -51,7 +91,7 @@ if (NOT shaderc_FOUND)
             add_library(shaderc ALIAS shaderc::shaderc)
         endif()
     else()
-        message(FATAL_ERROR "shaderc not found. Set shaderc_DIR or install Vulkan SDK Shaderc component. Tried VULKAN_SDK='$ENV{VULKAN_SDK}'.")
+        message(FATAL_ERROR "shaderc not found. Set shaderc_DIR, install the Vulkan SDK Shaderc component, or install vcpkg shaderc. Tried VULKAN_SDK='$ENV{VULKAN_SDK}'.")
     endif()
 endif()
 
