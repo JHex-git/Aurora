@@ -40,6 +40,7 @@ public:
     const bool HasTextures() const { return m_has_textures; }
     const bool HasPBRTextures() const { return m_has_pbr_textures; }
     const AxisAlignedBoundingBox GetAABB() const;
+    MeshID GetID() const { return m_id; }
 
     static constexpr MeshID INVALID_MESH_ID = 0;
 private:

@@ -14,7 +14,7 @@ namespace Aurora
 
 std::shared_ptr<SceneObject> SceneObjectFactory::CreateMesh(const std::string& file_path)
 {
-    auto scene_object = std::make_shared<SceneObject>(FileSystem::GetFileNameWithoutExtension(file_path));
+    auto scene_object = SceneObject::Create(FileSystem::GetFileNameWithoutExtension(file_path));
 
     auto mesh_renderer = std::make_shared<MeshRenderer>();
     if (!mesh_renderer->Init(scene_object)) return nullptr;
@@ -26,7 +26,7 @@ std::shared_ptr<SceneObject> SceneObjectFactory::CreateMesh(const std::string& f
 
 std::shared_ptr<SceneObject> SceneObjectFactory::CreateSkybox(std::array<std::string, 6>&& skybox_paths)
 {
-    auto scene_object = std::make_shared<SceneObject>("Skybox");
+    auto scene_object = SceneObject::Create("Skybox");
     
     auto skybox_renderer = std::make_shared<SkyboxRenderer>();
     skybox_renderer->Init(scene_object);
@@ -38,7 +38,7 @@ std::shared_ptr<SceneObject> SceneObjectFactory::CreateSkybox(std::array<std::st
 
 std::shared_ptr<SceneObject> SceneObjectFactory::CreatePointLight()
 {
-    auto scene_object = std::make_shared<SceneObject>("PointLight");
+    auto scene_object = SceneObject::Create("PointLight");
 
     auto light = std::make_shared<Light>(glm::vec3(1.0f), Light::Type::Point);
     if (!light->Init(scene_object)) return nullptr;
@@ -49,7 +49,7 @@ std::shared_ptr<SceneObject> SceneObjectFactory::CreatePointLight()
 
 std::shared_ptr<SceneObject> SceneObjectFactory::CreateDirectionalLight()
 {
-    auto scene_object = std::make_shared<SceneObject>("DirectionalLight");
+    auto scene_object = SceneObject::Create("DirectionalLight");
 
     auto light = std::make_shared<Light>(glm::vec3(1.f), Light::Type::Directional);
     if (!light->Init(scene_object)) return nullptr;

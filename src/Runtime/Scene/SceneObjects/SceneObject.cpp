@@ -15,6 +15,13 @@ void SceneObject::AddComponent(std::shared_ptr<Component> component)
     m_components.push_back(component);
 }
 
+std::shared_ptr<SceneObject> SceneObject::Create(std::string name, std::shared_ptr<SceneObject> parent)
+{
+    auto scene_object = std::shared_ptr<SceneObject>(new SceneObject(std::move(name), std::move(parent)));
+    scene_object->m_transform->Init(scene_object);
+    return scene_object;
+}
+
 void SceneObject::Update()
 {
     for (auto& component : m_components)
@@ -55,7 +62,7 @@ void SceneObject::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<
     {
         if (!strcmp(p_child->Name(), "SceneObject"))
         {
-            auto scene_object = std::make_shared<SceneObject>();
+            auto scene_object = SceneObject::Create();
             scene_object->Deserialize(p_child, shared_from_this());
             m_children.push_back(scene_object);
         }

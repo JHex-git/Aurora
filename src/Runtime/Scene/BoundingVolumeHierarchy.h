@@ -24,8 +24,10 @@ public:
         other.m_primitive_count = 0;
         m_aabb = std::move(other.m_aabb);
         m_mesh = std::move(other.m_mesh);
+        m_parent = nullptr;
+        if (m_child1) m_child1->m_parent = nullptr;
+        if (m_child2) m_child2->m_parent = nullptr;
     }
-    void Update();
 private:
     BoundingVolumeHierarchy() {}
 
@@ -33,6 +35,7 @@ private:
 
     std::unique_ptr<BoundingVolumeHierarchy> m_child1 = nullptr;
     std::unique_ptr<BoundingVolumeHierarchy> m_child2 = nullptr;
+    BoundingVolumeHierarchy* m_parent = nullptr;
     int m_primitive_count = 0;
     std::weak_ptr<Mesh> m_mesh;
     AxisAlignedBoundingBox m_aabb;

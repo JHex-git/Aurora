@@ -25,7 +25,7 @@ Scene::Scene(const std::string& scene_path)
 
 void Scene::CreateEmptySceneObject()
 {
-    m_scene_objects.push_back(std::make_shared<SceneObject>("Empty Scene Object"));
+    m_scene_objects.push_back(SceneObject::Create("Empty Scene Object"));
     SetSelectedSceneObject(m_scene_objects.back());
     SetDirty();
 }
@@ -111,7 +111,7 @@ void Scene::Deserialize(const tinyxml2::XMLElement *node, std::shared_ptr<SceneO
         }
         else if (!strcmp(p_child->Name(), "SceneObject"))
         {
-            auto scene_object = std::make_shared<SceneObject>();
+            auto scene_object = SceneObject::Create();
             scene_object->Deserialize(p_child, nullptr);
             m_scene_objects.push_back(scene_object);
         }

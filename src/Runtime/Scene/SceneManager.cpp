@@ -11,6 +11,11 @@
 
 namespace Aurora
 {
+namespace
+{
+    constexpr std::size_t kRebuildMovedMeshThreshold = 8;
+} // namespace
+
 SceneManager::~SceneManager()
 {
 }
@@ -21,6 +26,8 @@ void SceneManager::CleanUp()
     m_octree.reset();
     m_bvh.reset();
     m_meshes.clear();
+    m_bvh_leaf_map.clear();
+    m_moved_meshes.clear();
     m_bvh_dirty = true;
     m_dummy_scene_object.reset();
 }
@@ -68,6 +75,8 @@ void SceneManager::LoadScene(const std::string& scene_path)
     // m_octree = std::make_unique<Octree>(Octree::Build(m_scene->GetSceneObjects()));
     // spdlog::info("Spatial Octree built.");
     m_bvh = std::make_unique<BoundingVolumeHierarchy>(BoundingVolumeHierarchy::Build(m_scene->GetSceneObjects()));
+    IndexBVH();
+    m_moved_meshes.clear();
     m_bvh_dirty = false;
     spdlog::info("Bounding Volume Hierarchy built.");
 
@@ -96,8 +105,9 @@ const std::vector<glm::vec3> SceneManager::GetOctreeVertices() const
     return octree_aabbs;
 }
 
-const std::vector<glm::vec3> SceneManager::GetBVHVertices() const
+const std::vector<glm::vec3> SceneManager::GetBVHVertices()
 {
+    UpdateBVH();
     std::vector<glm::vec3> bvh_aabbs;
     std::list<BoundingVolumeHierarchy*> nodes;
     nodes.push_back(m_bvh.get());
@@ -133,26 +143,117 @@ void SceneManager::UnregisterMesh(MeshID id)
     m_bvh_dirty = true;
 }
 
-void SceneManager::RebuildBVH()
+void SceneManager::MarkMeshMoved(MeshID id)
+{
+    if (id != Mesh::INVALID_MESH_ID)
+    {
+        m_moved_meshes.insert(id);
+    }
+}
+
+void SceneManager::UpdateBVH()
 {
     if (!m_bvh_dirty)
-        return;
+    {
+        // Refitting keeps the topology the tree was built with: it stays correct, but the
+        // splits stop being a good fit once most of the scene has moved, so rebuild then.
+        const bool rebuild_preferred = m_moved_meshes.size() >= kRebuildMovedMeshThreshold &&
+            m_moved_meshes.size() * 2 >= m_bvh_leaf_map.size();
+        if (!rebuild_preferred)
+        {
+            RefitBVHForMovedMeshes();
+            return;
+        }
+        m_bvh_dirty = true;
+    }
 
     if (m_scene)
     {
         m_bvh = std::make_unique<BoundingVolumeHierarchy>(BoundingVolumeHierarchy::Build(m_scene->GetSceneObjects()));
+        IndexBVH();
     }
     else
     {
         m_bvh.reset();
+        m_bvh_leaf_map.clear();
     }
 
+    m_moved_meshes.clear();
     m_bvh_dirty = false;
+}
+
+void SceneManager::IndexBVH()
+{
+    m_bvh_leaf_map.clear();
+    if (!m_bvh)
+        return;
+
+    std::vector<BoundingVolumeHierarchy*> stack;
+    m_bvh->m_parent = nullptr;
+    stack.push_back(m_bvh.get());
+    while (!stack.empty())
+    {
+        auto* node = stack.back();
+        stack.pop_back();
+        if (node->m_child1)
+        {
+            node->m_child1->m_parent = node;
+            stack.push_back(node->m_child1.get());
+        }
+        if (node->m_child2)
+        {
+            node->m_child2->m_parent = node;
+            stack.push_back(node->m_child2.get());
+        }
+        if (!node->m_child1 && !node->m_child2)
+        {
+            if (auto mesh = node->m_mesh.lock())
+            {
+                m_bvh_leaf_map[mesh->GetID()] = node;
+            }
+        }
+    }
+}
+
+void SceneManager::RefitBVHForMovedMeshes()
+{
+    if (!m_bvh || m_moved_meshes.empty())
+        return;
+
+    for (const auto& mesh_id : m_moved_meshes)
+    {
+        auto it = m_bvh_leaf_map.find(mesh_id);
+        if (it == m_bvh_leaf_map.end())
+            continue;
+
+        auto* leaf = it->second;
+        auto mesh = leaf->m_mesh.lock();
+        if (!mesh)
+            continue;
+
+        leaf->m_aabb = mesh->GetAABB();
+
+        auto* node = leaf->m_parent;
+        while (node)
+        {
+            if (node->m_child1 && node->m_child2)
+            {
+                node->m_aabb = node->m_child1->m_aabb | node->m_child2->m_aabb;
+            }
+            else if (auto node_mesh = node->m_mesh.lock())
+            {
+                node->m_aabb = node_mesh->GetAABB();
+            }
+            node = node->m_parent;
+        }
+    }
+
+    m_moved_meshes.clear();
 }
 
 std::vector<std::shared_ptr<Mesh>> SceneManager::GetMeshesInViewFrustum()
 {
-    RebuildBVH();
+    UpdateBVH();
     std::vector<std::shared_ptr<Mesh>> meshes;
     if (m_scene)
     {

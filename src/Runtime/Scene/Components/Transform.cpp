@@ -5,7 +5,9 @@
 // Aurora include
 #include "Runtime/Scene/Components/Transform.h"
 #include "Runtime/Scene/Components/Light.h"
+#include "Runtime/Scene/Components/MeshRenderer.h"
 #include "Runtime/Scene/LightManager.h"
+#include "Runtime/Scene/SceneManager.h"
 
 namespace Aurora
 {
@@ -57,7 +59,7 @@ Transform::operator glm::mat4() const
 
 void Transform::OnFieldChanged(const std::string& field_name)
 {
-    if (field_name != "m_position" && field_name != "m_rotation")
+    if (field_name != "m_position" && field_name != "m_rotation" && field_name != "m_scale")
         return;
 
     if (auto owner = GetOwner().lock())
@@ -65,6 +67,13 @@ void Transform::OnFieldChanged(const std::string& field_name)
         if (owner->TryGetComponent<Light>())
         {
             LightManager::GetInstance().NotifyLightChanged();
+        }
+        if (auto mesh_renderer = owner->TryGetComponent<MeshRenderer>())
+        {
+            if (auto mesh = mesh_renderer->GetMesh())
+            {
+                SceneManager::GetInstance().MarkMeshMoved(mesh->GetID());
+            }
         }
     }
 }

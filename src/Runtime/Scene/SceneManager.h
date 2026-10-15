@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 // thirdparty include
 
 // Aurora include
@@ -43,20 +44,23 @@ public:
 
     const std::shared_ptr<Scene> GetScene() const { return m_scene; }
     const std::vector<glm::vec3> GetOctreeVertices() const;
-    const std::vector<glm::vec3> GetBVHVertices() const;
+    const std::vector<glm::vec3> GetBVHVertices();
 
     MeshID RegisterMesh(const std::shared_ptr<Mesh>& mesh);
     void UnregisterMesh(MeshID id);
     const std::unordered_map<MeshID, std::weak_ptr<Mesh>>& GetMeshes() const { return m_meshes; }
     std::vector<std::shared_ptr<Mesh>> GetMeshesInViewFrustum();
+    void MarkMeshMoved(MeshID id);
 
     // This is used for scene irrelavant objects, such as gizmos.
     std::shared_ptr<SceneObject> GetDummySceneObject() const { return m_dummy_scene_object; }
 
 private:
-    SceneManager() { m_dummy_scene_object = std::make_shared<SceneObject>("Dummy Scene Object"); }
+    SceneManager() { m_dummy_scene_object = SceneObject::Create("Dummy Scene Object"); }
 
-    void RebuildBVH();
+    void UpdateBVH();
+    void IndexBVH();
+    void RefitBVHForMovedMeshes();
 
 private:
     std::shared_ptr<Scene> m_scene;
@@ -64,6 +68,8 @@ private:
     std::unique_ptr<BoundingVolumeHierarchy> m_bvh;
     bool m_bvh_dirty = true;
     std::unordered_map<MeshID, std::weak_ptr<Mesh>> m_meshes;
+    std::unordered_map<MeshID, BoundingVolumeHierarchy*> m_bvh_leaf_map;
+    std::unordered_set<MeshID> m_moved_meshes;
 
     // This is used for scene irrelavant objects, such as gizmos.
     std::shared_ptr<SceneObject> m_dummy_scene_object;

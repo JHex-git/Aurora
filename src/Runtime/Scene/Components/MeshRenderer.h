@@ -26,6 +26,7 @@ public:
     bool LoadMesh(const std::string& path);
 
     inline std::shared_ptr<MeshRenderMaterial> GetRenderMaterial() const { return m_material; }
+    inline std::shared_ptr<Mesh> GetMesh() const { return m_mesh; }
     const AxisAlignedBoundingBox GetAABB() const { return m_mesh->GetAABB(); }
 
 private:

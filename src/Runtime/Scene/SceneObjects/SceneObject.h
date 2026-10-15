@@ -16,12 +16,8 @@ namespace Aurora
 class SceneObject : public Serializable, public std::enable_shared_from_this<SceneObject>
 {
 public:
-    SceneObject(std::string name = "", std::shared_ptr<SceneObject> parent = nullptr)
-    {
-        m_transform = std::make_shared<Transform>();
-        m_parent = parent;
-        m_name = name;
-    }
+    static std::shared_ptr<SceneObject> Create(std::string name = "", std::shared_ptr<SceneObject> parent = nullptr);
+
     ~SceneObject() = default;
 
     void AddComponent(std::shared_ptr<Component> component);
@@ -50,6 +46,16 @@ public:
     }
 
 private:
+    SceneObject(std::string name = "", std::shared_ptr<SceneObject> parent = nullptr)
+    {
+        m_transform = std::make_shared<Transform>();
+        m_parent = parent;
+        m_name = name;
+    }
+
+    SceneObject(const SceneObject&) = delete;
+    SceneObject& operator=(const SceneObject&) = delete;
+
     std::shared_ptr<Transform> m_transform;
     std::vector<std::shared_ptr<Component>> m_components;
     std::vector<std::shared_ptr<SceneObject>> m_children;
