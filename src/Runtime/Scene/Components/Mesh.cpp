@@ -23,24 +23,24 @@ namespace Aurora
 {
 namespace
 {
-    TextureBuilder::WrapType ConvertMapMode(aiTextureMapMode mode)
+    TextureWrapMode ConvertMapMode(aiTextureMapMode mode)
     {
         switch (mode)
         {
         case aiTextureMapMode_Wrap:
-            return TextureBuilder::WrapType::Repeat;
+            return TextureWrapMode::Repeat;
         case aiTextureMapMode_Clamp:
-            return TextureBuilder::WrapType::ClampToEdge;
+            return TextureWrapMode::ClampToEdge;
         case aiTextureMapMode_Mirror:
-            return TextureBuilder::WrapType::MirroredRepeat;
+            return TextureWrapMode::MirroredRepeat;
         case aiTextureMapMode_Decal:
-            return TextureBuilder::WrapType::ClampToBorder;
+            return TextureWrapMode::ClampToBorder;
         default:
-            return TextureBuilder::WrapType::Repeat;
+            return TextureWrapMode::Repeat;
         }
     }
 
-    std::string BuildTextureCacheKey(const std::string& path, TextureBuilder::WrapType wrap_s, TextureBuilder::WrapType wrap_t)
+    std::string BuildTextureCacheKey(const std::string& path, TextureWrapMode wrap_s, TextureWrapMode wrap_t)
     {
         return path + "|S=" + std::to_string(static_cast<int>(wrap_s)) + "|T=" + std::to_string(static_cast<int>(wrap_t));
     }
@@ -247,12 +247,10 @@ std::vector<TextureID> Mesh::LoadMaterialTextures(aiMaterial* material, aiTextur
                         type == aiTextureType_EMISSIVE ||
                         type == aiTextureType_BASE_COLOR ||
                         type == aiTextureType_EMISSION_COLOR;
-        TextureBuilder builder;
-        builder.WithWrapS(wrap_s)
-               .WithWrapT(wrap_t);
-        if (use_srgb)
-            builder.WithSRGB(true);
-        if (auto texture = builder.MakeTexture2D(full_path))
+        const TextureLoadOptions load_options{.srgb = use_srgb,
+                                              .wrap_s = wrap_s,
+                                              .wrap_t = wrap_t};
+        if (auto texture = TextureLoader::Load2D(full_path, load_options))
         {
             m_texturePath_to_id.insert({cache_key, texture->GetID()});
             texture_ids.push_back(texture->GetID());

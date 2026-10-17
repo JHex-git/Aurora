@@ -26,8 +26,13 @@ bool ViewWindow::Init()
 
 void ViewWindow::Render(ContextState& context_state)
 {
+    GLint previous_framebuffer = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &previous_framebuffer);
+
     SCOPED_RENDER_EVENT("View");
     m_render_pipeline->Render(context_state);
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(previous_framebuffer));
 }
 
 void ViewWindow::OnMousePosCallback(double xpos, double ypos)

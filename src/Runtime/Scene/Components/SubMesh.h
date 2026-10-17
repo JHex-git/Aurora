@@ -24,6 +24,7 @@ class SubMesh
     friend class SkyboxRenderMaterial;
     friend class ForwardRenderPass;
     friend class DeferredRenderPass;
+    friend class ShadowPass;
     friend class MeshOutlinePass;
     friend class SkyboxPass;
     friend class GizmosPass;

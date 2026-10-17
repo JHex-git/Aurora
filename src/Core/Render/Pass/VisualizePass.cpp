@@ -4,25 +4,30 @@
 #include "thirdparty/spdlog/include/spdlog/spdlog.h"
 // Aurora include
 #include "Core/Render/Pass/VisualizePass.h"
+#include "Core/Render/RenderGraph/RenderGraphBuilder.h"
+#include "Core/Render/RenderGraph/RenderGraphContext.h"
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/SceneManager.h"
 #include "glWrapper/RenderEventInfo.h"
+#include "glWrapper/FrameBufferObject.h"
 #include "Runtime/Scene/Camera.h"
 #include "Runtime/GlobalContext.h"
 
 namespace Aurora
 {
 
-bool VisualizePass::Init(const std::array<int, 2>& viewport_size)
+namespace
 {
-    if (!RenderPass::Init(viewport_size)) return false;
-    
-    auto fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
-                                        .AddColorAttachment({.internal_format = GL_RGBA16F, .format = GL_RGBA, .type = GL_FLOAT})
-                                        .EnableDepthAttachment({}).Create();
-    if (!fbo.has_value()) return false;
-    m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+struct VisualizeParameter : PassParameterBase
+{
+    RenderGraphTextureHandle color_in;
+    RenderGraphTextureHandle color_out;
+    RenderGraphTextureHandle depth;
+};
+} // namespace
 
+bool VisualizePass::Init()
+{
     // aabb visualize shader program
     {
         std::vector<Shader> shaders;
@@ -64,29 +69,52 @@ bool VisualizePass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void VisualizePass::Render(ContextState& context_state)
+RenderGraphTextureHandle VisualizePass::Render(RenderGraphBuilder& graph_builder,
+                                               RenderGraphTextureHandle color,
+                                               RenderGraphTextureHandle depth)
 {
-    m_fbo->Bind();
-    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
-    
-    if (GlobalContext::GetInstance().draw_spatial_hierarchy)
-    {
-        SCOPED_RENDER_EVENT("Spatial Hierarchy Visualization");
-        RenderState render_state;
-        context_state.ApplyRenderState(render_state);
+    ShaderProgram* shader = m_spatial_hierarchy_shader_program.get();
+    if (shader == nullptr) return color;
 
-        // How to transfer data from cpu to gpu efficiently?
-        // const auto vertices = SceneManager::GetInstance().GetOctreeVertices();
-        const auto vertices = SceneManager::GetInstance().GetBVHVertices();
-        m_spatial_hierarchy_vbo->LoadData(vertices, vertices.size());
-        m_spatial_hierarchy_shader_program->Bind();
-        m_spatial_hierarchy_vao->Bind();
-        m_spatial_hierarchy_shader_program->SetUniform("uViewProjection", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix());
-        m_spatial_hierarchy_shader_program->SetUniform("uColor", glm::vec3(1.0f, 0.0f, 0.0f));
-        glLineWidth(2.0f);
-        glDrawArrays(GL_LINES, 0, vertices.size());
-        m_spatial_hierarchy_vao->Unbind();
-    }
+    VisualizeParameter* param = graph_builder.AllocateParameter<VisualizeParameter>();
+    param->color_in = color;
+    param->color_out = graph_builder.CreateAliasedTexture("SceneColor.Visualize", color);
+    param->depth = depth;
+
+    graph_builder.AddPass(
+        "Visualize",
+        [param](RenderGraphPass& pass)
+        {
+            pass.Consume(param->color_in);
+            pass.Produce(param->color_out);
+            pass.Consume(param->depth);
+        },
+        [param, this, shader](RenderGraphContext& context)
+        {
+            if (!GlobalContext::GetInstance().draw_spatial_hierarchy) return;
+
+            FrameBufferObject& fbo = context.GetFrameBuffer({param->color_out}, param->depth);
+            fbo.Bind();
+
+            RenderState render_state;
+            context.ApplyRenderState(render_state);
+
+            // How to transfer data from cpu to gpu efficiently?
+            // const auto vertices = SceneManager::GetInstance().GetOctreeVertices();
+            const auto vertices = SceneManager::GetInstance().GetBVHVertices();
+            m_spatial_hierarchy_vbo->LoadData(vertices, vertices.size());
+            shader->Bind();
+            m_spatial_hierarchy_vao->Bind();
+            shader->SetUniform("uViewProjection", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix());
+            shader->SetUniform("uColor", glm::vec3(1.0f, 0.0f, 0.0f));
+            glLineWidth(2.0f);
+            glDrawArrays(GL_LINES, 0, vertices.size());
+            m_spatial_hierarchy_vao->Unbind();
+            shader->Unbind();
+        });
+
+    // Depth is only read here, so it is passed through unchanged.
+    return param->color_out;
 }
 } // namespace Aurora
 

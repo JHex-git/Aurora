@@ -18,5 +18,5 @@ void BlitDepth(std::shared_ptr<FrameBufferObject> src, std::shared_ptr<FrameBuff
 
 void BlitStencil(std::shared_ptr<FrameBufferObject> src, std::shared_ptr<FrameBufferObject> dst, GLenum filter = GL_NEAREST);
 
-void DrawQuad(TextureID texture);
+void DrawQuad();
 } // namespace Aurora

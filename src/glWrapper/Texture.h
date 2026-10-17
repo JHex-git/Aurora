@@ -1,8 +1,12 @@
 #pragma once
 // std include
-#include <vector>
-#include <string>
+#include <array>
+#include <cstddef>
+#include <functional>
 #include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 // thirdparty include
 #include "thirdparty/opengl/glad/include/glad/glad.h"
 // Aurora include
@@ -13,132 +17,61 @@ namespace Aurora
 class Texture;
 using TextureID = GLuint;
 
-class TextureBuilder
+enum class TextureType : GLenum
 {
-public:
-    enum class WrapType : GLint
-    {
-        Repeat = GL_REPEAT,
-        MirroredRepeat = GL_MIRRORED_REPEAT,
-        ClampToEdge = GL_CLAMP_TO_EDGE,
-        ClampToBorder = GL_CLAMP_TO_BORDER
-    };
+    Texture2D = GL_TEXTURE_2D,
+    Cubemap = GL_TEXTURE_CUBE_MAP,
+    Texture2DArray = GL_TEXTURE_2D_ARRAY,
+    CubemapArray = GL_TEXTURE_CUBE_MAP_ARRAY
+};
 
-    enum class FilterType : GLint
-    {
-        Nearest = GL_NEAREST,
-        Linear = GL_LINEAR,
-        NearestMipmapNearest = GL_NEAREST_MIPMAP_NEAREST,
-        NearestMipmapLinear = GL_NEAREST_MIPMAP_LINEAR,
-        LinearMipmapNearest = GL_LINEAR_MIPMAP_NEAREST,
-        LinearMipmapLinear = GL_LINEAR_MIPMAP_LINEAR
-    };
+enum class TextureWrapMode : GLint
+{
+    Repeat = GL_REPEAT,
+    MirroredRepeat = GL_MIRRORED_REPEAT,
+    ClampToEdge = GL_CLAMP_TO_EDGE,
+    ClampToBorder = GL_CLAMP_TO_BORDER
+};
 
-    enum class CubeFace : GLenum
-    {
-        PosX = GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        NegX = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-        PosY = GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-        NegY = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-        PosZ = GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-        NegZ = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
-    };
+enum class TextureFilterMode : GLint
+{
+    Nearest = GL_NEAREST,
+    Linear = GL_LINEAR,
+    NearestMipmapNearest = GL_NEAREST_MIPMAP_NEAREST,
+    NearestMipmapLinear = GL_NEAREST_MIPMAP_LINEAR,
+    LinearMipmapNearest = GL_LINEAR_MIPMAP_NEAREST,
+    LinearMipmapLinear = GL_LINEAR_MIPMAP_LINEAR
+};
 
-    TextureBuilder() = default;
-    ~TextureBuilder() = default;
+// Complete GL state description of a texture.
+struct TextureDescription
+{
+    GLsizei width = 1;
+    GLsizei height = 1;
+    TextureType texture_type = TextureType::Texture2D;
+    GLsizei layers = 1;                     // Only used by Texture2DArray / CubemapArray
 
-    TextureBuilder(const TextureBuilder&) = delete;
-    TextureBuilder& operator=(const TextureBuilder&) = delete;
+    GLint internal_format = GL_RGB;
+    GLenum format = GL_RGB;
+    GLenum type = GL_UNSIGNED_BYTE;
 
-    TextureBuilder(TextureBuilder&&) = delete;
-    TextureBuilder& operator=(TextureBuilder&&) = delete;
+    TextureWrapMode wrap_s = TextureWrapMode::Repeat;
+    TextureWrapMode wrap_t = TextureWrapMode::Repeat;
+    TextureWrapMode wrap_r = TextureWrapMode::Repeat;
+    TextureFilterMode min_filter = TextureFilterMode::Linear;
+    TextureFilterMode mag_filter = TextureFilterMode::Linear;
 
-    TextureBuilder& WithInternalFormat(GLint internal_format)
-    {
-        m_internal_format = internal_format;
-        return *this;
-    }
+    bool gen_mipmap = false;
 
-    TextureBuilder& WithWrapS(WrapType wrap_s)
-    {
-        m_wrap_s = wrap_s;
-        return *this;
-    }
-
-    TextureBuilder& WithWrapT(WrapType wrap_t)
-    {
-        m_wrap_t = wrap_t;
-        return *this;
-    }
-
-    TextureBuilder& WithWrapR(WrapType wrap_r)
-    {
-        m_wrap_r = wrap_r;
-        return *this;
-    }
-
-    TextureBuilder& WithMinFilter(FilterType min_filter)
-    {
-        m_min_filter = min_filter;
-        return *this;
-    }
-
-    TextureBuilder& WithMagFilter(FilterType mag_filter)
-    {
-        m_mag_filter = mag_filter;
-        return *this;
-    }
-
-    TextureBuilder& WithGenMipmap(bool gen_mipmap)
-    {
-        m_gen_mipmap = gen_mipmap;
-        return *this;
-    }
-
-    TextureBuilder& WithRequireHighPrecision(bool require_high_precision)
-    {
-        m_require_high_precision = require_high_precision;
-        return *this;
-    }
-
-    TextureBuilder& WithSRGB(bool use_srgb = true)
-    {
-        m_use_srgb = use_srgb;
-        return *this;
-    }
-
-    std::optional<Texture> MakeTexture2D(GLsizei width, GLsizei height, GLint format, GLenum type);
-    std::optional<Texture> MakeTexture2D(const std::string& path);
-    std::optional<Texture> MakeTexture2DArray(GLsizei width, GLsizei height, GLint format, GLenum type, GLsizei num);
-
-    std::optional<Texture> MakeTextureCubeMap(GLsizei width, GLsizei height, GLint format, GLenum type);
-    std::optional<Texture> MakeTextureCubeMap(const std::array<std::string, 6>& paths);
-    std::optional<Texture> MakeTextureCubeMapArray(GLsizei width, GLsizei height, GLint format, GLenum type, GLsizei num);
-
-private:
-    WrapType m_wrap_s = WrapType::Repeat;
-    WrapType m_wrap_t = WrapType::Repeat;
-    WrapType m_wrap_r = WrapType::Repeat;
-    FilterType m_min_filter = FilterType::Linear;
-    FilterType m_mag_filter = FilterType::Linear;
-    bool m_gen_mipmap = false;
-    bool m_require_high_precision = false;
-    bool m_use_srgb = false;
-    GLint m_internal_format = GL_RGB;
+    friend bool operator==(const TextureDescription& lhs, const TextureDescription& rhs) = default;
 };
 
 class Texture
 {
-    friend class TextureBuilder;
-    friend class TextureManager;
+    friend class TextureFactory;
+    friend class TextureLoader;
 public:
-    enum class Type : GLenum
-    {
-        Texture2D = GL_TEXTURE_2D,
-        Cubemap = GL_TEXTURE_CUBE_MAP,
-        Texture2DArray = GL_TEXTURE_2D_ARRAY,
-        CubemapArray = GL_TEXTURE_CUBE_MAP_ARRAY
-    };
+    using Type = TextureType;
 
     ~Texture();
 
@@ -154,12 +87,16 @@ public:
     TextureID GetID() const { return m_textureID; }
     Type GetType() const { return m_type; }
 
+    const TextureDescription& GetDescription() const { return m_description; }
+    bool HasStencil() const;
+
 private:
     Texture(Type texture_type);
-    
+
     Type m_type;
     TextureID m_textureID;
     int m_unit;
+    TextureDescription m_description;
 };
 
 struct SurfaceTexture
@@ -187,4 +124,62 @@ struct SurfaceTexture
     std::string type;
 };
 
+class TextureFactory
+{
+public:
+    static std::optional<Texture> Create(const TextureDescription& description, const void* initial_data = nullptr);
+};
+
+// Options for loading a texture from image files.
+struct TextureLoadOptions
+{
+    bool srgb = false;              // Promote RGB/RGBA to GL_SRGB / GL_SRGB_ALPHA
+    bool high_precision = false;    // Use stbi_loadf, pixels are GL_FLOAT
+    bool gen_mipmap = false;
+    bool flip_vertically = true;
+    TextureWrapMode wrap_s = TextureWrapMode::Repeat;
+    TextureWrapMode wrap_t = TextureWrapMode::Repeat;
+    TextureWrapMode wrap_r = TextureWrapMode::Repeat;
+    TextureFilterMode min_filter = TextureFilterMode::Linear;
+    TextureFilterMode mag_filter = TextureFilterMode::Linear;
+};
+
+// Loads textures from disk.
+class TextureLoader
+{
+public:
+    static std::optional<Texture> Load2D(const std::string& path, const TextureLoadOptions& options = {});
+    static std::optional<Texture> LoadCubemap(const std::array<std::string, 6>& paths, const TextureLoadOptions& options = {});
+};
+
 } // namespace Aurora
+
+namespace std
+{
+template<>
+struct hash<Aurora::TextureDescription>
+{
+    std::size_t operator()(const Aurora::TextureDescription& description) const noexcept
+    {
+        std::size_t seed = 0;
+        const auto combine = [&seed](auto value)
+        {
+            seed ^= std::hash<decltype(value)>{}(value) + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+        };
+        combine(description.width);
+        combine(description.height);
+        combine(description.texture_type);
+        combine(description.layers);
+        combine(description.internal_format);
+        combine(description.format);
+        combine(description.type);
+        combine(description.wrap_s);
+        combine(description.wrap_t);
+        combine(description.wrap_r);
+        combine(description.min_filter);
+        combine(description.mag_filter);
+        combine(description.gen_mipmap);
+        return seed;
+    }
+};
+} // namespace std

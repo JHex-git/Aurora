@@ -81,11 +81,11 @@ bool SkyboxRenderMaterial::Init(std::shared_ptr<SceneObject> owner)
 
 void SkyboxRenderMaterial::Load(std::array<std::string, 6>&& paths)
 {
-    m_cubemap_texture = TextureBuilder().WithWrapS(TextureBuilder::WrapType::ClampToEdge)
-                                        .WithWrapT(TextureBuilder::WrapType::ClampToEdge)
-                                        .WithWrapR(TextureBuilder::WrapType::ClampToEdge)
-                                        .WithSRGB(true)
-                                        .MakeTextureCubeMap(paths);
+    m_cubemap_texture = TextureLoader::LoadCubemap(paths, {.srgb = true,
+                                                          .flip_vertically = false,
+                                                          .wrap_s = TextureWrapMode::ClampToEdge,
+                                                          .wrap_t = TextureWrapMode::ClampToEdge,
+                                                          .wrap_r = TextureWrapMode::ClampToEdge});
     m_cubemap_paths = std::move(paths);
 }
 } // namespace Aurora

@@ -5,25 +5,29 @@
 #include "thirdparty/opengl/glm/glm/gtc/matrix_transform.hpp"
 // Aurora include
 #include "Core/Render/Pass/SkyboxPass.h"
+#include "Core/Render/RenderGraph/RenderGraphBuilder.h"
+#include "Core/Render/RenderGraph/RenderGraphContext.h"
 #include "Utility/FileSystem.h"
 #include "glWrapper/Shader.h"
+#include "glWrapper/FrameBufferObject.h"
 #include "glWrapper/RenderEventInfo.h"
 #include "Runtime/Scene/Camera.h"
 
 namespace Aurora
 {
 
-constexpr float outline_thickness = 10.f;
-bool SkyboxPass::Init(const std::array<int, 2>& viewport_size)
+namespace
 {
-    if (!RenderPass::Init(viewport_size)) return false;
-    
-    auto fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
-                                        .AddColorAttachment({.internal_format = GL_RGBA16F, .format = GL_RGBA, .type = GL_FLOAT})
-                                        .EnableDepthAttachment({}).Create();
-    if (!fbo.has_value()) return false;
-    m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+struct SkyboxParameter : PassParameterBase
+{
+    RenderGraphTextureHandle color_in;
+    RenderGraphTextureHandle color_out;
+    RenderGraphTextureHandle depth;
+};
+} // namespace
 
+bool SkyboxPass::Init()
+{
     std::vector<Shader> shaders;
     shaders.emplace_back(ShaderType::VertexShader);
     if (!shaders[0].Load(FileSystem::GetFullPath("shaders/skybox.vert")))
@@ -47,34 +51,51 @@ bool SkyboxPass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void SkyboxPass::Render(ContextState& context_state)
+RenderGraphTextureHandle SkyboxPass::Render(RenderGraphBuilder& graph_builder,
+                                            RenderGraphTextureHandle color,
+                                            RenderGraphTextureHandle depth)
 {
     auto skybox_render_material = m_skybox_render_material.lock();
-    if (skybox_render_material == nullptr || m_shader_program == nullptr) return;
-    
-    SCOPED_RENDER_EVENT("Skybox Pass");
-    
-    m_fbo->Bind();
-    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
+    ShaderProgram* shader = m_shader_program.get();
+    if (skybox_render_material == nullptr || shader == nullptr) return color;
 
-    RenderState render_state;
-    render_state.depth_stencil_state.depth_func = GL_LEQUAL;
-    render_state.raster_state.cull_face = GL_FRONT;
-    context_state.ApplyRenderState(render_state);
+    SkyboxParameter* param = graph_builder.AllocateParameter<SkyboxParameter>();
+    param->color_in = color;
+    param->color_out = graph_builder.CreateAliasedTexture("SceneColor.Skybox", color);
+    param->depth = depth;
 
-    m_shader_program->Bind();
-    // render the loaded model
-    const glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), MainCamera::GetInstance().GetPosition());
-    m_shader_program->SetUniform("uMVP", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix() * model);
-    for (size_t i = 0; i < skybox_render_material->m_mesh->m_submeshes.size(); ++i)
-    {
-        skybox_render_material->m_vaos[i]->Bind();
-        skybox_render_material->GetCubemapTexture()->Bind();
-        glDrawElements(GL_TRIANGLES, skybox_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-        skybox_render_material->m_vaos[i]->Unbind();
-    }
-    m_shader_program->Unbind();
+    graph_builder.AddPass(
+        "Skybox",
+        [param](RenderGraphPass& pass)
+        {
+            pass.Consume(param->color_in);
+            pass.Produce(param->color_out);
+            pass.Consume(param->depth);
+        },
+        [param, shader, skybox_render_material](RenderGraphContext& context)
+        {
+            FrameBufferObject& fbo = context.GetFrameBuffer({param->color_out}, param->depth);
+            fbo.Bind();
 
-    m_fbo->Unbind();
+            RenderState render_state;
+            render_state.depth_stencil_state.depth_func = GL_LEQUAL;
+            render_state.raster_state.cull_face = GL_FRONT;
+            context.ApplyRenderState(render_state);
+
+            shader->Bind();
+            // render the loaded model
+            const glm::mat4 model = glm::translate(glm::identity<glm::mat4>(), MainCamera::GetInstance().GetPosition());
+            shader->SetUniform("uMVP", MainCamera::GetInstance().GetProjectionMatrix() * MainCamera::GetInstance().GetViewMatrix() * model);
+            for (size_t i = 0; i < skybox_render_material->m_mesh->m_submeshes.size(); ++i)
+            {
+                skybox_render_material->m_vaos[i]->Bind();
+                skybox_render_material->GetCubemapTexture()->Bind();
+                glDrawElements(GL_TRIANGLES, skybox_render_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
+                skybox_render_material->m_vaos[i]->Unbind();
+            }
+            shader->Unbind();
+        });
+
+    return param->color_out;
 }
 } // namespace Aurora

@@ -11,160 +11,98 @@
 namespace Aurora
 {
 
-FrameBufferObjectBuilder& FrameBufferObjectBuilder::AddColorAttachment(ColorAttachmentDescriptor&& descriptor)
+std::optional<FrameBufferObject> FrameBufferObject::Create(GLsizei width,
+                                                          GLsizei height,
+                                                          const std::vector<Texture*>& color_attachments,
+                                                          Texture* depth_attachment)
 {
-    m_color_descriptors.push_back(std::move(descriptor));
-    return *this;
-}
-
-FrameBufferObjectBuilder& FrameBufferObjectBuilder::EnableDepthAttachment(DepthAttachmentDescriptor&& descriptor)
-{
-    if (descriptor.has_stencil && descriptor.texture_type == Texture::Type::Cubemap)
+    if (width <= 0 || height <= 0)
     {
-        spdlog::error("Cubemap texture does not support stencil attachment");
-        return *this;
-    }
-    m_depth_descriptor = std::move(descriptor);
-    return *this;
-}
-
-std::optional<FrameBufferObject> FrameBufferObjectBuilder::Create()
-{
-    FrameBufferObject fbo(m_width, m_height);
-
-    fbo.Bind();
-
-    if (m_color_descriptors.empty())
-    {
-        glDrawBuffer(GL_NONE);
-        glReadBuffer(GL_NONE);
-    }
-    else
-    {
-        // Create color attachments
-        for (size_t i = 0; i < m_color_descriptors.size(); ++i)
-        {
-            auto color_attachment = m_color_descriptors[i].texture_type == 
-                Texture::Type::Texture2D ?  
-                    TextureBuilder().WithInternalFormat(m_color_descriptors[i].internal_format).MakeTexture2D(m_width, m_height, m_color_descriptors[i].format, m_color_descriptors[i].type) :
-                    TextureBuilder().WithInternalFormat(m_color_descriptors[i].internal_format)
-                                    .WithWrapS(TextureBuilder::WrapType::ClampToEdge)
-                                    .WithWrapT(TextureBuilder::WrapType::ClampToEdge)
-                                    .WithWrapR(TextureBuilder::WrapType::ClampToEdge)
-                                    .MakeTextureCubeMap(m_width, m_height, m_color_descriptors[i].format, m_color_descriptors[i].type);
-            if (color_attachment)
-            {
-                color_attachment->Bind();
-                if (m_color_descriptors[i].texture_type == Texture::Type::Texture2D)
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i), GL_TEXTURE_2D, color_attachment->GetID(), 0);
-                else
-                    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i), color_attachment->GetID(), 0);
-                fbo.m_color_attachments.push_back(std::move(*color_attachment));
-            }
-            else
-            {
-                spdlog::error("Failed to create color attachment {}", i);
-                return std::nullopt;
-            }
-        }
-
-        if (m_color_descriptors.size() > 1)
-        {
-            std::vector<GLenum> draw_buffers;
-            draw_buffers.reserve(m_color_descriptors.size());
-            for (size_t i = 0; i < m_color_descriptors.size(); ++i)
-            {
-                draw_buffers.push_back(GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i));
-            }
-            glDrawBuffers(static_cast<GLsizei>(draw_buffers.size()), draw_buffers.data());
-        }
-    }
-
-    if (m_depth_descriptor.has_value())
-    {
-        // has depth and stencil
-        if (m_depth_descriptor->has_stencil)
-        {
-            auto depth_stencil_attachment = TextureBuilder().WithInternalFormat(GL_DEPTH_STENCIL).MakeTexture2D(m_width, m_height, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8);
-            if (depth_stencil_attachment)
-            {
-                depth_stencil_attachment->Bind();
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth_stencil_attachment->GetID(), 0);
-                fbo.m_depth_stencil_attachment = std::move(*depth_stencil_attachment);
-            }
-            else
-            {
-                spdlog::error("Failed to create DepthStencil attachment");
-                return std::nullopt;
-            }
-        }
-        else // has only depth
-        {
-            if (m_depth_descriptor->texture_type == Texture::Type::Cubemap || m_depth_descriptor->texture_type == Texture::Type::CubemapArray)
-            {
-                TextureBuilder& texture_builder = TextureBuilder().WithInternalFormat(GL_DEPTH_COMPONENT)
-                                                        .WithWrapS(TextureBuilder::WrapType::ClampToEdge)
-                                                        .WithWrapT(TextureBuilder::WrapType::ClampToEdge)
-                                                        .WithWrapR(TextureBuilder::WrapType::ClampToEdge);
-                std::optional<Texture> depth_attachment;
-                if (m_depth_descriptor->texture_type == Texture::Type::Cubemap)
-                {
-                    depth_attachment = texture_builder.MakeTextureCubeMap(m_width, m_height, GL_DEPTH_COMPONENT, GL_FLOAT);
-                }
-                else
-                {
-                    depth_attachment = texture_builder.MakeTextureCubeMapArray(m_width, m_height, GL_DEPTH_COMPONENT, GL_FLOAT, m_depth_descriptor->layers);
-                }
-
-                if (depth_attachment)
-                {
-                    depth_attachment->Bind();
-                    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_attachment->GetID(), 0);
-                    fbo.m_depth_stencil_attachment = std::move(*depth_attachment);
-                }
-            }
-            else if (m_depth_descriptor->texture_type == Texture::Type::Texture2DArray)
-            {
-                auto depth_attachment = TextureBuilder().WithInternalFormat(GL_DEPTH_COMPONENT)
-                                                       .WithWrapS(TextureBuilder::WrapType::ClampToEdge)
-                                                       .WithWrapT(TextureBuilder::WrapType::ClampToEdge)
-                                                       .MakeTexture2DArray(m_width, m_height, GL_DEPTH_COMPONENT, GL_FLOAT, m_depth_descriptor->layers);
-                if (depth_attachment)
-                {
-                    depth_attachment->Bind();
-                    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depth_attachment->GetID(), 0);
-                    fbo.m_depth_stencil_attachment = std::move(*depth_attachment);
-                }
-            }
-            else if (m_depth_descriptor->texture_type == Texture::Type::Texture2D)
-            {
-                auto depth_attachment = TextureBuilder().WithInternalFormat(GL_DEPTH_COMPONENT).MakeTexture2D(m_width, m_height, GL_DEPTH_COMPONENT, GL_FLOAT);
-                if (depth_attachment)
-                {
-                    depth_attachment->Bind();
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_attachment->GetID(), 0);
-                    fbo.m_depth_stencil_attachment = std::move(*depth_attachment);
-                }
-            }
-        }
-    }
-
-    // Check if the framebuffer is complete
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    {
-        spdlog::error("Framebuffer is not complete, status: {:x}", glCheckFramebufferStatus(GL_FRAMEBUFFER));
+        spdlog::error("FrameBufferObject::Create: invalid size {}x{}", width, height);
         return std::nullopt;
     }
+    if (color_attachments.empty() && depth_attachment == nullptr)
+    {
+        spdlog::error("FrameBufferObject::Create: no attachments provided");
+        return std::nullopt;
+    }
+    for (size_t i = 0; i < color_attachments.size(); ++i)
+    {
+        if (color_attachments[i] == nullptr)
+        {
+            spdlog::error("FrameBufferObject::Create: color attachment {} is null", i);
+            return std::nullopt;
+        }
+    }
 
+    FrameBufferObject fbo(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
+    fbo.m_color_attachments.assign(color_attachments.begin(), color_attachments.end());
+    fbo.m_depth_attachment = depth_attachment;
+    fbo.m_depth_attachment_point = (depth_attachment != nullptr && depth_attachment->HasStencil())
+        ? GL_DEPTH_STENCIL_ATTACHMENT
+        : GL_DEPTH_ATTACHMENT;
+
+    fbo.Bind();
+    const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+        spdlog::error("FrameBufferObject::Create: framebuffer is not complete, status: {:x}", status);
+        return std::nullopt;
+    }
     fbo.Unbind();
 
-    return std::make_optional<FrameBufferObject>(std::move(fbo));
+    return fbo;
 }
 
 FrameBufferObject::FrameBufferObject(unsigned int width, unsigned int height)
     : m_width(width), m_height(height)
 {
     glGenFramebuffers(1, &m_fboID);
+}
+
+void FrameBufferObject::AttachAll(GLenum target) const
+{
+    const bool has_draw_side = target == GL_FRAMEBUFFER || target == GL_DRAW_FRAMEBUFFER;
+    const bool has_read_side = target == GL_FRAMEBUFFER || target == GL_READ_FRAMEBUFFER;
+
+    if (has_draw_side)
+    {
+        if (m_color_attachments.empty())
+        {
+            glDrawBuffer(GL_NONE);
+        }
+        else
+        {
+            std::vector<GLenum> draw_buffers(m_color_attachments.size());
+            for (size_t i = 0; i < draw_buffers.size(); ++i)
+            {
+                draw_buffers[i] = GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i);
+            }
+            glDrawBuffers(static_cast<GLsizei>(draw_buffers.size()), draw_buffers.data());
+        }
+    }
+    if (has_read_side && m_color_attachments.empty())
+    {
+        glReadBuffer(GL_NONE);
+    }
+
+    for (size_t i = 0; i < m_color_attachments.size(); ++i)
+    {
+        const GLenum attachment = GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i);
+        const Texture* texture = m_color_attachments[i];
+        if (texture->GetType() == Texture::Type::Texture2D)
+            glFramebufferTexture2D(target, attachment, GL_TEXTURE_2D, texture->GetID(), 0);
+        else
+            glFramebufferTexture(target, attachment, texture->GetID(), 0);
+    }
+
+    if (m_depth_attachment != nullptr)
+    {
+        if (m_depth_attachment->GetType() == Texture::Type::Texture2D)
+            glFramebufferTexture2D(target, m_depth_attachment_point, GL_TEXTURE_2D, m_depth_attachment->GetID(), 0);
+        else
+            glFramebufferTexture(target, m_depth_attachment_point, m_depth_attachment->GetID(), 0);
+    }
 }
 
 FrameBufferObject::~FrameBufferObject()
@@ -176,10 +114,12 @@ FrameBufferObject::FrameBufferObject(FrameBufferObject&& other) noexcept
 {
     m_fboID = other.m_fboID;
     m_color_attachments = std::move(other.m_color_attachments);
-    m_depth_stencil_attachment = std::move(other.m_depth_stencil_attachment);
+    m_depth_attachment = other.m_depth_attachment;
+    m_depth_attachment_point = other.m_depth_attachment_point;
     m_width = other.m_width;
     m_height = other.m_height;
     other.m_fboID = 0;
+    other.m_depth_attachment = nullptr;
 }
 
 FrameBufferObject& FrameBufferObject::operator=(FrameBufferObject&& other) noexcept
@@ -189,10 +129,12 @@ FrameBufferObject& FrameBufferObject::operator=(FrameBufferObject&& other) noexc
         glDeleteFramebuffers(1, &m_fboID);
         m_fboID = other.m_fboID;
         m_color_attachments = std::move(other.m_color_attachments);
-        m_depth_stencil_attachment = std::move(other.m_depth_stencil_attachment);
+        m_depth_attachment = other.m_depth_attachment;
+        m_depth_attachment_point = other.m_depth_attachment_point;
         m_width = other.m_width;
         m_height = other.m_height;
         other.m_fboID = 0;
+        other.m_depth_attachment = nullptr;
     }
     return *this;
 }
@@ -200,6 +142,7 @@ FrameBufferObject& FrameBufferObject::operator=(FrameBufferObject&& other) noexc
 void FrameBufferObject::Bind() const
 {
     glBindFramebuffer(GL_FRAMEBUFFER, m_fboID);
+    AttachAll(GL_FRAMEBUFFER);
     glViewport(0, 0, m_width, m_height);
 }
 
@@ -211,6 +154,7 @@ void FrameBufferObject::Unbind() const
 void FrameBufferObject::BindRead() const
 {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fboID);
+    AttachAll(GL_READ_FRAMEBUFFER);
 }
 
 void FrameBufferObject::UnbindRead() const
@@ -221,6 +165,7 @@ void FrameBufferObject::UnbindRead() const
 void FrameBufferObject::BindDraw() const
 {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_fboID);
+    AttachAll(GL_DRAW_FRAMEBUFFER);
 }
 
 void FrameBufferObject::UnbindDraw() const
@@ -230,99 +175,109 @@ void FrameBufferObject::UnbindDraw() const
 
 void FrameBufferObject::BindColorCubemapFace(size_t index, unsigned int face) const
 {
-    if (index < m_color_attachments.size() && m_color_attachments[index].GetType() == Texture::Type::Cubemap)
+    const Texture* texture = GetColorAttachment(index);
+    if (texture != nullptr && texture->GetType() == Texture::Type::Cubemap)
     {
         Bind();
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, texture->GetID(), 0);
     }
 }
 
 void FrameBufferObject::BindColorCubemapFaceRead(size_t index, unsigned int face) const
 {
-    if (index < m_color_attachments.size() && m_color_attachments[index].GetType() == Texture::Type::Cubemap)
+    const Texture* texture = GetColorAttachment(index);
+    if (texture != nullptr && texture->GetType() == Texture::Type::Cubemap)
     {
         BindRead();
-        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
+        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, texture->GetID(), 0);
     }
 }
 
 void FrameBufferObject::BindColorCubemapFaceDraw(size_t index, unsigned int face) const
 {
-    if (index < m_color_attachments.size() && m_color_attachments[index].GetType() == Texture::Type::Cubemap)
+    const Texture* texture = GetColorAttachment(index);
+    if (texture != nullptr && texture->GetType() == Texture::Type::Cubemap)
     {
         BindDraw();
-        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_color_attachments[index].GetID(), 0);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(index), GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, texture->GetID(), 0);
     }
 }
 
 void FrameBufferObject::BindDepthCubemapFace(unsigned int face) const
 {
-    if (m_depth_stencil_attachment.has_value() && m_depth_stencil_attachment->GetType() == Texture::Type::Cubemap)
+    const Texture* depth = GetDepthAttachment();
+    if (depth != nullptr && depth->GetType() == Texture::Type::Cubemap)
     {
         Bind();
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_depth_stencil_attachment->GetID(), 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, m_depth_attachment_point, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, depth->GetID(), 0);
     }
 }
 
 void FrameBufferObject::BindDepthCubemapFaceRead(unsigned int face) const
 {
-    if (m_depth_stencil_attachment.has_value() && m_depth_stencil_attachment->GetType() == Texture::Type::Cubemap)
+    const Texture* depth = GetDepthAttachment();
+    if (depth != nullptr && depth->GetType() == Texture::Type::Cubemap)
     {
         BindRead();
-        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_depth_stencil_attachment->GetID(), 0);
+        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, m_depth_attachment_point, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, depth->GetID(), 0);
     }
 }
 
 void FrameBufferObject::BindDepthCubemapFaceDraw(unsigned int face) const
 {
-    if (m_depth_stencil_attachment.has_value() && m_depth_stencil_attachment->GetType() == Texture::Type::Cubemap)
+    const Texture* depth = GetDepthAttachment();
+    if (depth != nullptr && depth->GetType() == Texture::Type::Cubemap)
     {
         BindDraw();
-        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, m_depth_stencil_attachment->GetID(), 0);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, m_depth_attachment_point, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, depth->GetID(), 0);
     }
 }
 
 void FrameBufferObject::BindDepthCubemapArray(unsigned int cubemap_index, unsigned int face) const
 {
-    if (m_depth_stencil_attachment.has_value() && m_depth_stencil_attachment->GetType() == Texture::Type::CubemapArray)
+    const Texture* depth = GetDepthAttachment();
+    if (depth != nullptr && depth->GetType() == Texture::Type::CubemapArray)
     {
         Bind();
-        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth_stencil_attachment->GetID(), 0, cubemap_index * 6 + face);
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, m_depth_attachment_point, depth->GetID(), 0, cubemap_index * 6 + face);
     }
 }
 
 void FrameBufferObject::BindDepthTextureLayer(unsigned int layer) const
 {
-    if (m_depth_stencil_attachment.has_value() && m_depth_stencil_attachment->GetType() == Texture::Type::Texture2DArray)
+    const Texture* depth = GetDepthAttachment();
+    if (depth != nullptr && depth->GetType() == Texture::Type::Texture2DArray)
     {
         Bind();
-        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth_stencil_attachment->GetID(), 0, layer);
+        glFramebufferTextureLayer(GL_FRAMEBUFFER, m_depth_attachment_point, depth->GetID(), 0, layer);
     }
 }
 
 
 void FrameBufferObject::BindColorTexture(size_t index, unsigned int unit)
 {
-    if (index < m_color_attachments.size())
+    if (Texture* texture = GetColorAttachment(index))
     {
-        m_color_attachments[index].Bind(unit);
+        texture->Bind(unit);
     }
 }
 
 void FrameBufferObject::BindDepthTexture(unsigned int unit)
 {
-    if (m_depth_stencil_attachment.has_value())
+    if (Texture* texture = GetDepthAttachment())
     {
-        m_depth_stencil_attachment->Bind(unit);
+        texture->Bind(unit);
     }
 }
 
 std::vector<size_t> FrameBufferObject::GetCubemapColorAttachmentIndices() const
 {
     std::vector<size_t> indices;
-    for (size_t i = 0; i < m_color_attachments.size(); ++i)
+    const size_t color_count = GetColorAttachmentNumber();
+    for (size_t i = 0; i < color_count; ++i)
     {
-        if (m_color_attachments[i].GetType() == Texture::Type::Cubemap)
+        const Texture* texture = GetColorAttachment(i);
+        if (texture != nullptr && texture->GetType() == Texture::Type::Cubemap)
             indices.push_back(i);
     }
     return indices;

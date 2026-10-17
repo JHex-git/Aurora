@@ -20,6 +20,7 @@ class MeshRenderMaterial : public RenderMaterial, public std::enable_shared_from
 {
     friend class ForwardRenderPass;
     friend class DeferredRenderPass;
+    friend class ShadowPass;
     friend class MeshOutlinePass;
     friend class SkyboxPass;
     friend class GizmosPass;

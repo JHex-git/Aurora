@@ -5,24 +5,30 @@
 #include "thirdparty/opengl/glm/glm/gtc/matrix_transform.hpp"
 // Aurora include
 #include "Core/Render/Pass/GizmosPass.h"
+#include "Core/Render/RenderGraph/RenderGraphBuilder.h"
+#include "Core/Render/RenderGraph/RenderGraphContext.h"
 #include "Utility/FileSystem.h"
 #include "Runtime/Scene/Camera.h"
 #include "Runtime/Scene/SceneManager.h"
+#include "glWrapper/FrameBufferObject.h"
 #include "glWrapper/RenderEventInfo.h"
 
 namespace Aurora
 {
 
-bool GizmosPass::Init(const std::array<int, 2>& viewport_size)
+namespace
 {
-    if (!RenderPass::Init(viewport_size)) return false;
-    
-    auto fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
-                                        .AddColorAttachment({})
-                                        .EnableDepthAttachment({}).Create();
-    if (!fbo.has_value()) return false;
-    m_fbo = std::make_shared<FrameBufferObject>(std::move(fbo.value()));
+struct GizmosParameter : PassParameterBase
+{
+    RenderGraphTextureHandle color_in;
+    RenderGraphTextureHandle color_out;
+    RenderGraphTextureHandle depth_in;
+    RenderGraphTextureHandle depth_out;
+};
+} // namespace
 
+bool GizmosPass::Init()
+{
     std::vector<Shader> shaders;
     shaders.emplace_back(ShaderType::VertexShader);
     auto vert_shader_path = FileSystem::GetFullPath("shaders/mesh.vert");
@@ -72,33 +78,58 @@ bool GizmosPass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void GizmosPass::Render(ContextState& context_state)
+RenderGraphTextureHandle GizmosPass::Render(RenderGraphBuilder& graph_builder,
+                                            RenderGraphTextureHandle color,
+                                            RenderGraphTextureHandle depth)
 {
-    SCOPED_RENDER_EVENT("Gizmos Pass");
-    m_fbo->Bind();
-    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    if (m_shader_program == nullptr) return;
+    ShaderProgram* shader = m_shader_program.get();
+    if (shader == nullptr) return color;
 
+    GizmosParameter* param = graph_builder.AllocateParameter<GizmosParameter>();
+    // Draw on top of the existing target: read the previous version and produce the next
+    // one, which aliases the same memory. This keeps one producer per resource and lets
+    // the graph derive the order from the dependency instead of declaration order.
+    param->color_in = color;
+    param->color_out = graph_builder.CreateAliasedTexture("SceneColor.Gizmos", color);
+    param->depth_in = depth;
+    param->depth_out = graph_builder.CreateAliasedTexture("SceneDepth.Gizmos", depth);
 
-    // render handle
-    if (auto selected_transform = m_selected_transform.lock())
-    {
-        m_shader_program->Bind();
-        const glm::mat4 model = glm::scale(glm::translate(glm::identity<glm::mat4>(), selected_transform->GetField<glm::vec3>("m_position")), glm::vec3(1e-4f));
-        m_shader_program->SetUniform("uModel", model);
-        m_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
-        m_shader_program->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
-        m_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
-        for (size_t i = 0; i < m_current_handle_material->m_mesh->m_submeshes.size(); ++i)
+    graph_builder.AddPass(
+        "Gizmos",
+        [param](RenderGraphPass& pass)
         {
-            m_shader_program->SetUniform("uColor", m_current_handle_material->m_mesh->m_submeshes[i].m_color);
-            m_current_handle_material->m_vaos[i]->Bind();
-            glDrawElements(GL_TRIANGLES, m_current_handle_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-            m_current_handle_material->m_vaos[i]->Unbind();
-        }
-        m_shader_program->Unbind();
-    }
-    m_fbo->Unbind();
+            pass.Consume(param->color_in);
+            pass.Produce(param->color_out);
+            // The pass clears depth so the gizmo stays visible, which is a real write.
+            pass.Consume(param->depth_in);
+            pass.Produce(param->depth_out);
+        },
+        [param, this, shader](RenderGraphContext& context)
+        {
+            auto selected_transform = m_selected_transform.lock();
+            if (selected_transform == nullptr) return;
+
+            FrameBufferObject& fbo = context.GetFrameBuffer({param->color_out}, param->depth_out);
+            fbo.Bind();
+            // Gizmos must stay visible, so the depth of the scene is discarded first.
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            shader->Bind();
+            const glm::mat4 model = glm::scale(glm::translate(glm::identity<glm::mat4>(), selected_transform->GetField<glm::vec3>("m_position")), glm::vec3(1e-4f));
+            shader->SetUniform("uModel", model);
+            shader->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
+            shader->SetUniform("uProjection", MainCamera::GetInstance().GetProjectionMatrix());
+            shader->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
+            for (size_t i = 0; i < m_current_handle_material->m_mesh->m_submeshes.size(); ++i)
+            {
+                shader->SetUniform("uColor", m_current_handle_material->m_mesh->m_submeshes[i].m_color);
+                m_current_handle_material->m_vaos[i]->Bind();
+                glDrawElements(GL_TRIANGLES, m_current_handle_material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
+                m_current_handle_material->m_vaos[i]->Unbind();
+            }
+            shader->Unbind();
+        });
+
+    return param->color_out;
 }
 } // namespace Aurora

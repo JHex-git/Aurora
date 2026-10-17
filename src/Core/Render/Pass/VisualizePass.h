@@ -1,10 +1,12 @@
 #pragma once
 // std include
-
+#include <array>
+#include <memory>
 // thirdparty include
 
 // Aurora include
 #include "Core/Render/Pass/RenderPass.h"
+#include "Core/Render/RenderGraph/RenderGraphTexture.h"
 #include "glWrapper/Shader.h"
 #include "glWrapper/VertexArray.h"
 #include "glWrapper/VertexBuffer.h"
@@ -12,15 +14,19 @@
 namespace Aurora
 {
 
+class RenderGraphBuilder;
+
 class VisualizePass : public RenderPass
 {
 public:
     VisualizePass() = default;
     ~VisualizePass() = default;
 
-    bool Init(const std::array<int, 2>& viewport_size) override;
-    void Render(ContextState& context_state) override;
+    bool Init() override;
 
+    RenderGraphTextureHandle Render(RenderGraphBuilder& graph_builder,
+                                    RenderGraphTextureHandle color,
+                                    RenderGraphTextureHandle depth);
 private:
     std::shared_ptr<VertexArray> m_spatial_hierarchy_vao;
     std::shared_ptr<VertexBuffer> m_spatial_hierarchy_vbo;

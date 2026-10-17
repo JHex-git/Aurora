@@ -34,7 +34,7 @@ void BlitStencil(std::shared_ptr<FrameBufferObject> src, std::shared_ptr<FrameBu
     Blit(src, dst, GL_STENCIL_BUFFER_BIT, filter);
 }
 
-void DrawQuad(TextureID texture)
+void DrawQuad()
 {
     static GLuint quad_vao = 0;
     static GLuint quad_vbo = 0;

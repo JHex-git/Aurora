@@ -10,7 +10,10 @@
 #include "Core/Render/Pass/DeferredRenderPass.h"
 #include "Core/Render/LightUBO.h"
 #include "Core/Render/PbrUtils.h"
+#include "Core/Render/RenderGraph/RenderGraphBuilder.h"
+#include "Core/Render/RenderGraph/RenderGraphContext.h"
 #include "Utility/FileSystem.h"
+#include "glWrapper/FrameBufferObject.h"
 #include "glWrapper/RenderEventInfo.h"
 #include "Runtime/Scene/Camera.h"
 #include "Runtime/Scene/LightManager.h"
@@ -25,52 +28,31 @@ namespace Aurora
 
 namespace
 {
-constexpr std::array<glm::vec3, 6> k_dirs = {glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f),
-                                           glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f),
-                                           glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, -1.0f)};
-constexpr std::array<glm::vec3, 6> k_ups = {glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f),
-                                            glm::vec3(0.f, 0.f, 1.f), glm::vec3(0.f, 0.f, -1.f),
-                                            glm::vec3(0.f, -1.f, 0.f), glm::vec3(0.f, -1.f, 0.f)};
-
-}
-
-bool DeferredRenderPass::Init(const std::array<int, 2>& viewport_size)
+struct DeferredGeometryParameter : PassParameterBase
 {
-    if (!RenderPass::Init(viewport_size)) return false;
+    RenderGraphTextureHandle position;
+    RenderGraphTextureHandle normal;
+    RenderGraphTextureHandle albedo;
+    RenderGraphTextureHandle mra;
+    RenderGraphTextureHandle emissive;
+    RenderGraphTextureHandle depth;
+};
 
-    // G-buffer attachment order: position, normal, albedo, MRA, emissive.
-    auto gbuffer = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
-                                        .AddColorAttachment({.internal_format = GL_RGB16F, .format = GL_RGB, .type = GL_FLOAT})
-                                        .AddColorAttachment({.internal_format = GL_RGB16F, .format = GL_RGB, .type = GL_FLOAT})
-                                        .AddColorAttachment({.internal_format = GL_RGBA, .format = GL_RGBA, .type = GL_UNSIGNED_BYTE})
-                                        .AddColorAttachment({.internal_format = GL_RGB, .format = GL_RGB, .type = GL_UNSIGNED_BYTE})
-                                        .AddColorAttachment({.internal_format = GL_RGB, .format = GL_RGB, .type = GL_UNSIGNED_BYTE})
-                                        .EnableDepthAttachment({}).Create();
-    if (!gbuffer.has_value()) return false;
-    m_gbuffer_fbo = std::make_shared<FrameBufferObject>(std::move(gbuffer.value()));
+struct DeferredLightingParameter : PassParameterBase
+{
+    RenderGraphTextureHandle position;
+    RenderGraphTextureHandle normal;
+    RenderGraphTextureHandle albedo;
+    RenderGraphTextureHandle mra;
+    RenderGraphTextureHandle emissive;
+    RenderGraphTextureHandle color;
+    ShadowPass::Result shadows;
+};
 
-    // Lighting output (HDR)
-    auto shading_fbo = FrameBufferObjectBuilder(viewport_size[0], viewport_size[1])
-                                        .AddColorAttachment({.internal_format = GL_RGBA16F, .format = GL_RGBA, .type = GL_FLOAT})
-                                        .EnableDepthAttachment({}).Create();
-    if (!shading_fbo.has_value()) return false;
-    m_fbo = std::make_shared<FrameBufferObject>(std::move(shading_fbo.value()));
+} // namespace
 
-    auto shadow_cubemap_fbo = FrameBufferObjectBuilder(1024, 1024).EnableDepthAttachment({.texture_type = Texture::Type::CubemapArray}).Create();
-    if (!shadow_cubemap_fbo.has_value()) return false;
-    m_shadow_cubemap_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_cubemap_fbo.value()));
-
-    int shadow_map_size = kDirectionalShadowMapSizeDefault;
-    if (auto scene = SceneManager::GetInstance().GetScene())
-    {
-        shadow_map_size = scene->GetRenderSettings().GetDirectionalShadowMapSize();
-    }
-    m_shadow_csm_size_cached = shadow_map_size;
-    auto shadow_csm_fbo = FrameBufferObjectBuilder(shadow_map_size, shadow_map_size)
-                                        .EnableDepthAttachment({.texture_type = Texture::Type::Texture2DArray, .layers = kDirectionalCascadeMax}).Create();
-    if (!shadow_csm_fbo.has_value()) return false;
-    m_shadow_csm_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_csm_fbo.value()));
-
+bool DeferredRenderPass::Init()
+{
     m_light_ubo = std::make_unique<UniformBuffer>(sizeof(LightUBOData), 0, GL_STATIC_DRAW);
 
     // G-buffer shader program with textures
@@ -127,31 +109,6 @@ bool DeferredRenderPass::Init(const std::array<int, 2>& viewport_size)
         }
     }
 
-    // shadow map shader program
-    {
-        std::vector<Shader> shaders;
-        shaders.emplace_back(ShaderType::VertexShader);
-        auto vert_path = FileSystem::GetFullPath("shaders/mesh.vert");
-        if (!shaders[0].Load(vert_path))
-        {
-            spdlog::error("Failed to load vertex shader {}", vert_path);
-            return false;
-        }
-        shaders.emplace_back(ShaderType::FragmentShader);
-        auto frag_path = FileSystem::GetFullPath("shaders/pure.frag");
-        if (!shaders[1].Load(frag_path))
-        {
-            spdlog::error("Failed to load fragment shader {}", frag_path);
-            return false;
-        }
-        m_shadow_map_shader_program = std::make_unique<ShaderProgram>();
-        if (!m_shadow_map_shader_program->Load(shaders))
-        {
-            spdlog::error("Failed to load shader program");
-            return false;
-        }
-    }
-
     // lighting shader program
     {
         std::vector<Shader> shaders;
@@ -182,42 +139,94 @@ bool DeferredRenderPass::Init(const std::array<int, 2>& viewport_size)
     return true;
 }
 
-void DeferredRenderPass::Render(ContextState& context_state)
+void DeferredRenderPass::Render(RenderGraphBuilder& graph_builder,
+                                RenderGraphTextureHandle color,
+                                RenderGraphTextureHandle depth,
+                                const ShadowPass::Result& shadows,
+                                const std::array<int, 2>& viewport_size)
 {
-    LazyUpdateLightData();
-    // Ensure the deferred UBO is bound when both forward/deferred exist.
-    m_light_ubo->BindBase(0);
-    auto scene = SceneManager::GetInstance().GetScene();
-    if (!scene) return;
-    const auto& settings = scene->GetRenderSettings();
-    SyncDirectionalShadowResources(settings);
+    if (m_gbuffer_tex_shader_program == nullptr || m_gbuffer_no_tex_shader_program == nullptr || m_lighting_shader_program == nullptr)
+        return;
 
-    if (m_gbuffer_tex_shader_program != nullptr && m_gbuffer_no_tex_shader_program != nullptr && m_lighting_shader_program != nullptr)
+    const GLsizei width = viewport_size[0];
+    const GLsizei height = viewport_size[1];
+
+    // G-buffer attachment order: position, normal, albedo, MRA, emissive.
+    const auto gbuffer_desc = [width, height](GLint internal_format, GLenum format, GLenum type)
     {
-        SCOPED_RENDER_EVENT("DeferredRenderPass");
+        return TextureDescription{.width = width, .height = height, .internal_format = internal_format, .format = format, .type = type};
+    };
 
-        // Find the brightest directional light for shadow map rendering, as we only support one directional light shadow map.
-        std::shared_ptr<Light> brightest_light = nullptr;
-        float max_intensity = 0.0f;
-        const auto& lights = LightManager::GetInstance().GetLights(Light::Type::Directional);
-        for (const auto& [id, weak_ptr] : lights)
+    auto* geometry = graph_builder.AllocateParameter<DeferredGeometryParameter>();
+    geometry->position = graph_builder.CreateTexture("GBuffer.Position", gbuffer_desc(GL_RGB16F, GL_RGB, GL_FLOAT));
+    geometry->normal = graph_builder.CreateTexture("GBuffer.Normal", gbuffer_desc(GL_RGB16F, GL_RGB, GL_FLOAT));
+    geometry->albedo = graph_builder.CreateTexture("GBuffer.Albedo", gbuffer_desc(GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE));
+    geometry->mra = graph_builder.CreateTexture("GBuffer.MRA", gbuffer_desc(GL_RGB, GL_RGB, GL_UNSIGNED_BYTE));
+    geometry->emissive = graph_builder.CreateTexture("GBuffer.Emissive", gbuffer_desc(GL_RGB, GL_RGB, GL_UNSIGNED_BYTE));
+    geometry->depth = depth;
+
+    auto* lighting = graph_builder.AllocateParameter<DeferredLightingParameter>();
+    lighting->position = geometry->position;
+    lighting->normal = geometry->normal;
+    lighting->albedo = geometry->albedo;
+    lighting->mra = geometry->mra;
+    lighting->emissive = geometry->emissive;
+    lighting->color = color;
+    lighting->shadows = shadows;
+
+    graph_builder.AddPass(
+        "DeferredGeometry",
+        [geometry](RenderGraphPass& pass)
         {
-            if (auto light = weak_ptr.lock())
-            {
-                if (light->GetIntensity() > max_intensity)
-                {
-                    max_intensity = light->GetIntensity();
-                    brightest_light = light;
-                }
-            }
-        }
+            pass.Produce(geometry->position);
+            pass.Produce(geometry->normal);
+            pass.Produce(geometry->albedo);
+            pass.Produce(geometry->mra);
+            pass.Produce(geometry->emissive);
+            pass.Produce(geometry->depth);
+        },
+        [geometry, this](RenderGraphContext& context)
+        {
+            FrameBufferObject& target = context.GetFrameBuffer(
+                {geometry->position, geometry->normal, geometry->albedo, geometry->mra, geometry->emissive},
+                geometry->depth);
+            RenderGeometryPass(context.GetContextState(), target);
+        });
 
-        RenderDirectionalLightShadow(context_state, brightest_light, settings);
-        RenderPointLightShadow(context_state);
-        RenderGeometryPass(context_state);
-        BlitDepth(m_gbuffer_fbo, m_fbo);
-        RenderLightingPass(context_state, brightest_light, settings);
-    }
+    graph_builder.AddPass(
+        "DeferredLighting",
+        [lighting](RenderGraphPass& pass)
+        {
+            pass.Consume(lighting->position);
+            pass.Consume(lighting->normal);
+            pass.Consume(lighting->albedo);
+            pass.Consume(lighting->mra);
+            pass.Consume(lighting->emissive);
+            pass.Consume(lighting->shadows.csm);
+            pass.Consume(lighting->shadows.point_shadows);
+            pass.Produce(lighting->color);
+        },
+        [lighting, this](RenderGraphContext& context)
+        {
+            LazyUpdateLightData();
+            // Ensure the deferred UBO is bound when both forward/deferred exist.
+            m_light_ubo->BindBase(0);
+
+            auto scene = SceneManager::GetInstance().GetScene();
+            if (!scene) return;
+            const auto& settings = scene->GetRenderSettings();
+
+            FrameBufferObject& target = context.GetFrameBuffer({lighting->color});
+            const std::array<Texture*, 5> gbuffer = {&context.GetTexture(lighting->position),
+                                                    &context.GetTexture(lighting->normal),
+                                                    &context.GetTexture(lighting->albedo),
+                                                    &context.GetTexture(lighting->mra),
+                                                    &context.GetTexture(lighting->emissive)};
+            RenderLightingPass(context.GetContextState(), settings, lighting->shadows,
+                               context.GetTexture(lighting->shadows.point_shadows),
+                               context.GetTexture(lighting->shadows.csm),
+                               target, gbuffer);
+        });
 }
 
 void DeferredRenderPass::OnLightChanged()
@@ -246,172 +255,13 @@ void DeferredRenderPass::LazyUpdateLightData()
         }
         m_light_ubo->SetData(&light_ubo_data, sizeof(LightUBOData));
 
-        auto shadow_cubemap_fbo = FrameBufferObjectBuilder(1024, 1024)
-                                    .EnableDepthAttachment({.texture_type = Texture::Type::CubemapArray, .layers = std::max(light_ubo_data.num_lights, 1u)})
-                                    .Create();
-        m_shadow_cubemap_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_cubemap_fbo.value()));
-
         m_lighting_data_dirty = false;
     }
 }
 
-void DeferredRenderPass::RenderPointLightShadow(ContextState& context_state) const
+void DeferredRenderPass::RenderGeometryPass(ContextState& context_state, FrameBufferObject& target) const
 {
-    const auto& lights = LightManager::GetInstance().GetLights(Light::Type::Point);
-    if (!lights.empty())
-    {
-        SCOPED_RENDER_EVENT("Point Light Shadow Pass");
-        m_shadow_cubemap_fbo->Bind();
-        int light_index = 0;
-        for (auto p_light : lights)
-        {
-            auto light = p_light.second.lock();
-            if (!light) continue;
-            auto light_owner = light->GetOwner().lock();
-
-            SCOPED_RENDER_EVENT(light_owner ? light_owner->GetName() : "light");
-            RenderState render_state;
-            render_state.depth_stencil_state.depth_test_enabled = true;
-            render_state.depth_stencil_state.depth_write_enabled = true;
-            context_state.ApplyRenderState(render_state);
-            for (int face = 0; face < k_dirs.size(); ++face)
-            {
-                m_shadow_cubemap_fbo->BindDepthCubemapArray(light_index, face);
-                glClear(GL_DEPTH_BUFFER_BIT);
-            }
-
-            const float near_plane = light->GetCullDistance().x;
-            const float far_plane = light->GetCullDistance().y;
-            const auto perspective = glm::perspective(glm::radians(90.f), 1.f, near_plane, far_plane);
-
-            m_shadow_map_shader_program->Bind();
-            m_shadow_map_shader_program->SetUniform("uProjection", perspective);
-
-            const auto& meshes = SceneManager::GetInstance().GetMeshes();
-            for (const auto& mesh_it : meshes)
-            {
-                const auto p_mesh = mesh_it.second.lock();
-                if (!p_mesh) continue;
-                const auto p_material = p_mesh->m_render_proxy.lock();
-                const auto material = std::dynamic_pointer_cast<MeshRenderMaterial>(p_material);
-                if (!material) continue;
-
-                const auto material_owner = material->GetOwner().lock();
-                SCOPED_RENDER_EVENT(material_owner ? material_owner->GetName() : "mesh render material");
-
-                const glm::mat4 model = material->GetModelMatrix();
-                m_shadow_map_shader_program->SetUniform("uModel", model);
-
-                for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
-                {
-                    material->m_vaos[i]->Bind();
-                    for (auto j = 0; j < k_dirs.size(); ++j)
-                    {
-                        m_shadow_map_shader_program->SetUniform("uView", glm::lookAt(light->GetPosition(), light->GetPosition() + k_dirs[j], k_ups[j]));
-                        m_shadow_cubemap_fbo->BindDepthCubemapArray(light_index, j);
-                        glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-                    }
-                    material->m_vaos[i]->Unbind();
-                }
-            }
-            light_index++;
-        }
-    }
-}
-
-void DeferredRenderPass::RenderDirectionalLightShadow(ContextState& context_state, std::shared_ptr<Light> directional_light, const RenderSettings& settings)
-{
-    if (!directional_light)
-    {
-        m_directional_cascades_valid = false;
-        return;
-    }
-
-    UpdateDirectionalLightCascades(directional_light, settings);
-    if (!m_directional_cascades_valid)
-        return;
-
-    SCOPED_RENDER_EVENT("Directional Light Shadow Pass");
-
-    RenderState render_state;
-    render_state.depth_stencil_state.depth_test_enabled = true;
-    context_state.ApplyRenderState(render_state);
-
-    m_shadow_map_shader_program->Bind();
-
-    const auto& meshes = SceneManager::GetInstance().GetMeshes();
-    struct ShadowRenderItem
-    {
-        std::shared_ptr<MeshRenderMaterial> material;
-        AxisAlignedBoundingBox aabb;
-    };
-
-    std::vector<ShadowRenderItem> shadow_items;
-    shadow_items.reserve(meshes.size());
-    for (const auto& mesh_it : meshes)
-    {
-        const auto p_mesh = mesh_it.second.lock();
-        if (!p_mesh) continue;
-        const auto p_material = p_mesh->m_render_proxy.lock();
-        const auto material = std::dynamic_pointer_cast<MeshRenderMaterial>(p_material);
-        if (!material) continue;
-        shadow_items.push_back({material, p_mesh->GetAABB()});
-    }
-
-    const int cascade_count = settings.GetDirectionalCascadeCount();
-    for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
-    {
-        const std::string cascade_label = "Directional Cascade " + std::to_string(cascade_index);
-        SCOPED_RENDER_EVENT(cascade_label);
-        m_shadow_csm_fbo->BindDepthTextureLayer(static_cast<unsigned int>(cascade_index));
-        glClear(GL_DEPTH_BUFFER_BIT);
-        m_shadow_map_shader_program->SetUniform("uProjection", m_directional_cascades[cascade_index].proj);
-        m_shadow_map_shader_program->SetUniform("uView", m_directional_cascades[cascade_index].view);
-
-        const auto& cascade_aabb = m_directional_cascades[cascade_index].world_aabb;
-        const bool cull_enabled = cascade_aabb.IsValid();
-        for (const auto& item : shadow_items)
-        {
-            if (cull_enabled && item.aabb.IsValid() && !cascade_aabb.Intersects(item.aabb))
-                continue;
-            const auto& material = item.material;
-
-            const auto material_owner = material->GetOwner().lock();
-            SCOPED_RENDER_EVENT(material_owner ? material_owner->GetName() : "mesh render material");
-
-            const glm::mat4 model = material->GetModelMatrix();
-            m_shadow_map_shader_program->SetUniform("uModel", model);
-
-            for (size_t i = 0; i < material->m_mesh->m_submeshes.size(); ++i)
-            {
-                material->m_vaos[i]->Bind();
-                glDrawElements(GL_TRIANGLES, material->m_mesh->m_submeshes[i].m_indices.size(), GL_UNSIGNED_INT, nullptr);
-                material->m_vaos[i]->Unbind();
-            }
-        }
-    }
-}
-
-void DeferredRenderPass::SyncDirectionalShadowResources(const RenderSettings& settings)
-{
-    const int shadow_map_size = settings.GetDirectionalShadowMapSize();
-    if (shadow_map_size == m_shadow_csm_size_cached)
-        return;
-
-    auto shadow_csm_fbo = FrameBufferObjectBuilder(shadow_map_size, shadow_map_size)
-                                        .EnableDepthAttachment({.texture_type = Texture::Type::Texture2DArray, .layers = kDirectionalCascadeMax}).Create();
-    if (shadow_csm_fbo.has_value())
-    {
-        m_shadow_csm_fbo = std::make_shared<FrameBufferObject>(std::move(shadow_csm_fbo.value()));
-        m_shadow_csm_size_cached = shadow_map_size;
-    }
-}
-
-void DeferredRenderPass::RenderGeometryPass(ContextState& context_state) const
-{
-    SCOPED_RENDER_EVENT("GBuffer Pass");
-    m_gbuffer_fbo->Bind();
-    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
+    target.Bind();
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -538,11 +388,15 @@ void DeferredRenderPass::RenderGeometryPass(ContextState& context_state) const
     }
 }
 
-void DeferredRenderPass::RenderLightingPass(ContextState& context_state, std::shared_ptr<Light> directional_light, const RenderSettings& settings) const
+void DeferredRenderPass::RenderLightingPass(ContextState& context_state,
+                                           const RenderSettings& settings,
+                                           const ShadowPass::Result& shadows,
+                                           Texture& point_shadows,
+                                           Texture& directional_shadows,
+                                           FrameBufferObject& target,
+                                           const std::array<Texture*, 5>& gbuffer) const
 {
-    SCOPED_RENDER_EVENT("Lighting Pass");
-    m_fbo->Bind();
-    glViewport(0, 0, m_viewport_size[0], m_viewport_size[1]);
+    target.Bind();
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -555,11 +409,10 @@ void DeferredRenderPass::RenderLightingPass(ContextState& context_state, std::sh
     m_lighting_shader_program->Bind();
 
     // G-buffer bindings
-    m_gbuffer_fbo->BindColorTexture(0, 0); // position
-    m_gbuffer_fbo->BindColorTexture(1, 1); // normal
-    m_gbuffer_fbo->BindColorTexture(2, 2); // albedo
-    m_gbuffer_fbo->BindColorTexture(3, 3); // mra
-    m_gbuffer_fbo->BindColorTexture(4, 4); // emissive
+    for (int i = 0; i < static_cast<int>(gbuffer.size()); ++i)
+    {
+        gbuffer[i]->Bind(i);
+    }
     m_lighting_shader_program->SetUniform("uGBufferPosition", 0);
     m_lighting_shader_program->SetUniform("uGBufferNormal", 1);
     m_lighting_shader_program->SetUniform("uGBufferAlbedo", 2);
@@ -567,10 +420,10 @@ void DeferredRenderPass::RenderLightingPass(ContextState& context_state, std::sh
     m_lighting_shader_program->SetUniform("uGBufferEmissive", 4);
 
     int current_unit = 5;
-    m_shadow_cubemap_fbo->BindDepthTexture(current_unit++);
-    m_lighting_shader_program->SetUniform("uTexPointLightShadowMaps", current_unit - 1);
-    m_shadow_csm_fbo->BindDepthTexture(current_unit++);
-    m_lighting_shader_program->SetUniform("uDirectionalLightTexShadowMap", current_unit - 1);
+    m_lighting_shader_program->SetUniform("uTexPointLightShadowMaps", current_unit);
+    point_shadows.Bind(current_unit++);
+    m_lighting_shader_program->SetUniform("uDirectionalLightTexShadowMap", current_unit);
+    directional_shadows.Bind(current_unit++);
 
     m_lighting_shader_program->SetUniform("uView", MainCamera::GetInstance().GetViewMatrix());
     m_lighting_shader_program->SetUniform("uViewPos", MainCamera::GetInstance().GetPosition());
@@ -578,20 +431,20 @@ void DeferredRenderPass::RenderLightingPass(ContextState& context_state, std::sh
     m_lighting_shader_program->SetUniform("uDirectionalShadowPcfSamples", settings.GetDirectionalShadowPcfSamples());
     m_lighting_shader_program->SetUniform("uPointShadowPcfSamples", settings.GetPointShadowPcfSamples());
 
-    if (directional_light && m_directional_cascades_valid)
+    if (shadows.directional_light && shadows.cascades_valid)
     {
         const int cascade_count = settings.GetDirectionalCascadeCount();
         for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
         {
             const auto cascade_str = std::to_string(cascade_index);
-            m_lighting_shader_program->SetUniform("uDirectionalLightOrthoVP[" + cascade_str + "]", m_directional_cascades[cascade_index].vp);
-            m_lighting_shader_program->SetUniform("uDirectionalLightCascadeSplits[" + cascade_str + "]", m_directional_cascades[cascade_index].split_depth);
-            m_lighting_shader_program->SetUniform("uDirectionalLightNearFarNorm[" + cascade_str + "]", m_directional_cascades[cascade_index].near_far_norm);
+            m_lighting_shader_program->SetUniform("uDirectionalLightOrthoVP[" + cascade_str + "]", shadows.cascades[cascade_index].vp);
+            m_lighting_shader_program->SetUniform("uDirectionalLightCascadeSplits[" + cascade_str + "]", shadows.cascades[cascade_index].split_depth);
+            m_lighting_shader_program->SetUniform("uDirectionalLightNearFarNorm[" + cascade_str + "]", shadows.cascades[cascade_index].near_far_norm);
         }
         m_lighting_shader_program->SetUniform("uDirectionalCascadeCount", cascade_count);
-        m_lighting_shader_program->SetUniform("uDirectionalLightDirection", directional_light->GetDirection());
-        m_lighting_shader_program->SetUniform("uDirectionalLightColor", directional_light->GetColor());
-        m_lighting_shader_program->SetUniform("uDirectionalLightIntensity", directional_light->GetIntensity());
+        m_lighting_shader_program->SetUniform("uDirectionalLightDirection", shadows.directional_light->GetDirection());
+        m_lighting_shader_program->SetUniform("uDirectionalLightColor", shadows.directional_light->GetColor());
+        m_lighting_shader_program->SetUniform("uDirectionalLightIntensity", shadows.directional_light->GetIntensity());
         m_lighting_shader_program->SetUniform("uEnableDirectionalLightShadow", true);
     }
     else
@@ -599,138 +452,8 @@ void DeferredRenderPass::RenderLightingPass(ContextState& context_state, std::sh
         m_lighting_shader_program->SetUniform("uEnableDirectionalLightShadow", false);
     }
 
-    DrawQuad(m_gbuffer_fbo->GetColorAttachmentID(0));
+    DrawQuad();
     m_lighting_shader_program->Unbind();
 }
 
-void DeferredRenderPass::UpdateDirectionalLightCascades(std::shared_ptr<Light> directional_light, const RenderSettings& settings)
-{
-    m_directional_cascades_valid = false;
-    if (!directional_light)
-        return;
-
-    const auto& camera = MainCamera::GetInstance();
-    const float near_clip = camera.GetNearPlane();
-    const float far_clip = camera.GetFarPlane();
-    if (near_clip <= 0.0f || far_clip <= near_clip)
-        return;
-    const int cascade_count = settings.GetDirectionalCascadeCount();
-    if (cascade_count <= 0)
-        return;
-
-    const glm::mat4 view = camera.GetViewMatrix();
-    const glm::mat4 inv_view = glm::inverse(view);
-    const glm::mat4 proj = camera.GetProjectionMatrix();
-    const float tan_half_fov = 1.0f / proj[1][1];
-    const float aspect = proj[1][1] / proj[0][0];
-
-    const float clip_range = far_clip - near_clip;
-    const float ratio = far_clip / near_clip;
-
-    std::array<float, kDirectionalCascadeMax> splits = {};
-    const float split_lambda = settings.GetDirectionalSplitLambda();
-    for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
-    {
-        const float p = (cascade_index + 1) / static_cast<float>(cascade_count);
-        const float log = near_clip * std::pow(ratio, p);
-        const float linear = near_clip + clip_range * p;
-        splits[cascade_index] = split_lambda * log + (1.0f - split_lambda) * linear;
-    }
-
-    const glm::vec3 light_dir = glm::normalize(directional_light->GetDirection());
-    const glm::vec3 up_dir = (std::abs(glm::dot(light_dir, glm::vec3(0.f, 1.f, 0.f))) > 0.999f) ? glm::vec3(0.f, 0.f, 1.f) : glm::vec3(0.f, 1.f, 0.f);
-
-    float prev_split = near_clip;
-    const float padding_xy = settings.GetDirectionalPaddingXY();
-    const float padding_z = settings.GetDirectionalPaddingZ();
-    for (int cascade_index = 0; cascade_index < cascade_count; ++cascade_index)
-    {
-        const float split_dist = splits[cascade_index];
-        const float near_plane = prev_split;
-        const float far_plane = split_dist;
-
-        const float near_height = 2.0f * tan_half_fov * near_plane;
-        const float near_width = near_height * aspect;
-        const float far_height = 2.0f * tan_half_fov * far_plane;
-        const float far_width = far_height * aspect;
-
-        std::array<glm::vec4, 8> corners = {
-            glm::vec4(-near_width / 2.0f, -near_height / 2.0f, -near_plane, 1.0f),
-            glm::vec4( near_width / 2.0f, -near_height / 2.0f, -near_plane, 1.0f),
-            glm::vec4( near_width / 2.0f,  near_height / 2.0f, -near_plane, 1.0f),
-            glm::vec4(-near_width / 2.0f,  near_height / 2.0f, -near_plane, 1.0f),
-            glm::vec4(-far_width / 2.0f, -far_height / 2.0f, -far_plane, 1.0f),
-            glm::vec4( far_width / 2.0f, -far_height / 2.0f, -far_plane, 1.0f),
-            glm::vec4( far_width / 2.0f,  far_height / 2.0f, -far_plane, 1.0f),
-            glm::vec4(-far_width / 2.0f,  far_height / 2.0f, -far_plane, 1.0f)
-        };
-
-        glm::vec3 center(0.0f);
-        for (auto& corner : corners)
-        {
-            corner = inv_view * corner;
-            center += glm::vec3(corner);
-        }
-        center /= 8.0f;
-
-        const glm::mat4 light_view = glm::lookAt(center - light_dir, center, up_dir);
-
-        float min_x = std::numeric_limits<float>::max();
-        float max_x = std::numeric_limits<float>::lowest();
-        float min_y = std::numeric_limits<float>::max();
-        float max_y = std::numeric_limits<float>::lowest();
-        float min_z = std::numeric_limits<float>::max();
-        float max_z = std::numeric_limits<float>::lowest();
-
-        for (const auto& corner : corners)
-        {
-            const glm::vec4 corner_ls = light_view * corner;
-            min_x = std::min(min_x, corner_ls.x);
-            max_x = std::max(max_x, corner_ls.x);
-            min_y = std::min(min_y, corner_ls.y);
-            max_y = std::max(max_y, corner_ls.y);
-            min_z = std::min(min_z, corner_ls.z);
-            max_z = std::max(max_z, corner_ls.z);
-        }
-
-        min_x -= padding_xy;
-        max_x += padding_xy;
-        min_y -= padding_xy;
-        max_y += padding_xy;
-        min_z -= padding_z;
-        max_z += padding_z;
-
-        // Snap the light-space XY center to texel size to stabilize shadows while the camera moves.
-        const float range_x = max_x - min_x;
-        const float range_y = max_y - min_y;
-        const int shadow_map_size = std::max(settings.GetDirectionalShadowMapSize(), 1);
-        if (range_x > 0.0f && range_y > 0.0f)
-        {
-            const float texel_x = range_x / static_cast<float>(shadow_map_size);
-            const float texel_y = range_y / static_cast<float>(shadow_map_size);
-            float center_x = (min_x + max_x) * 0.5f;
-            float center_y = (min_y + max_y) * 0.5f;
-            center_x = std::round(center_x / texel_x) * texel_x;
-            center_y = std::round(center_y / texel_y) * texel_y;
-            min_x = center_x - range_x * 0.5f;
-            max_x = center_x + range_x * 0.5f;
-            min_y = center_y - range_y * 0.5f;
-            max_y = center_y + range_y * 0.5f;
-        }
-
-        const glm::mat4 light_proj = glm::ortho(min_x, max_x, min_y, max_y, min_z, max_z);
-        const AxisAlignedBoundingBox light_aabb(glm::vec3(min_x, min_y, min_z), glm::vec3(max_x, max_y, max_z));
-        const glm::mat4 inv_light_view = glm::inverse(light_view);
-
-        m_directional_cascades[cascade_index].view = light_view;
-        m_directional_cascades[cascade_index].proj = light_proj;
-        m_directional_cascades[cascade_index].vp = light_proj * light_view;
-        m_directional_cascades[cascade_index].split_depth = split_dist;
-        m_directional_cascades[cascade_index].near_far_norm = max_z - min_z;
-        m_directional_cascades[cascade_index].world_aabb = inv_light_view * light_aabb;
-        prev_split = split_dist;
-    }
-
-    m_directional_cascades_valid = true;
-}
 } // namespace Aurora

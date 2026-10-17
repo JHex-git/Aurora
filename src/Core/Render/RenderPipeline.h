@@ -7,6 +7,7 @@
 #include "Core/Render/Pass/ForwardRenderPass.h"
 #include "Core/Render/Pass/DeferredRenderPass.h"
 #include "Core/Render/Pass/MeshOutlinePass.h"
+#include "Core/Render/Pass/ShadowPass.h"
 #include "Core/Render/Pass/SkyboxPass.h"
 #include "Core/Render/Pass/TonemapPass.h"
 #include "Core/Render/Pass/GizmosPass.h"
@@ -15,21 +16,23 @@
 
 namespace Aurora
 {
+class RenderResourcePool;
 
 class RenderPipeline
 {
 public:
     RenderPipeline(std::array<int, 2> render_size = {1920, 1080});
-    ~RenderPipeline() = default;
+    ~RenderPipeline();
 
     bool Init();
     void Render(ContextState& context_state);
 
     void SetSkyboxRenderMaterial(std::shared_ptr<SkyboxRenderMaterial> skybox_render_material);
 
-    int GetRenderTargetID() const { return m_fbo->GetColorAttachmentID(0); }
+    int GetRenderTargetID() const;
 
 private:
+    std::unique_ptr<ShadowPass> m_shadow_pass;
     std::unique_ptr<ForwardRenderPass> m_mesh_phong_pass;
     std::unique_ptr<DeferredRenderPass> m_deferred_pass;
     std::unique_ptr<MeshOutlinePass> m_mesh_outline_pass;
@@ -39,6 +42,7 @@ private:
     std::unique_ptr<GizmosPass> m_gizmos_pass;
 
     std::array<int, 2> m_render_size;
-    std::shared_ptr<FrameBufferObject> m_fbo;
+    std::unique_ptr<Texture> m_final_color_texture;
+    std::unique_ptr<RenderResourcePool> m_resource_pool;
 };
 } // namespace Aurora
